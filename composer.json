@@ -1,0 +1,14 @@
+{
+	"name": "gbatanov/rdc",
+	"description": "Redis tagged cache",
+	"authors": [
+		{
+			"name": "gbatanov",
+			"email": "gsb@gsbmail.ru"
+		}
+	],
+	"require-dev": {
+		"colinmollenhour/credis": "1.2"
+	}
+
+}

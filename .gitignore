@@ -1,0 +1,6 @@
+/nbproject
+/vendor
+/Credis
+/vendor/composer
+/vendor/colinmollenhour
+/*.lock
