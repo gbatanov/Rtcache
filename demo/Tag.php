@@ -7,7 +7,8 @@
  * @version v.0.1
  * @package rtcache.demo
  */
-class Tag extends Rtcache_Cache_Tag {
+namespace Rtcache\demo;
+class Tag extends \Rtcache\Cache\Tag {
 	public function getBackend() {
 		global $backend;
 		return $backend;

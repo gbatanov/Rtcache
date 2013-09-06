@@ -7,6 +7,7 @@
  * @version v.0.1
  * @package rtcache.demo
  */
+namespace Rtcache\demo;
 class User {
 
 	private static $_id = 0;

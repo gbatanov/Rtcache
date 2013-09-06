@@ -6,17 +6,18 @@
  * @version v.0.1
  * @package Rtcache
  */
-class Rtcache_Cache_Backend {
+namespace Rtcache\Cache;
+class Backend {
 
 	const CLEANING_MODE_ALL = 'all';
 	const CLEANING_MODE_OLD = 'old';
 	const CLEANING_MODE_MATCHING_TAG = 'matchingTag';
 	const CLEANING_MODE_NOT_MATCHING_TAG = 'notMatchingTag';
-	const CLEANING_MODE_MATCHING_ANY_TAG = 'all';
-	const SET_IDS = 'zc:ids';
-	const SET_TAGS = 'zc:tags';
-	const PREFIX_KEY = 'zc:k:';
-	const PREFIX_TAG_IDS = 'zc:ti:';
+	const CLEANING_MODE_MATCHING_ANY_TAG = 'matchingAnyTag';
+	const SET_IDS = 'rtc:ids';
+	const SET_TAGS = 'rtc:tags';
+	const PREFIX_KEY = 'rtc:k:';
+	const PREFIX_TAG_IDS = 'rtc:ti:';
 	const FIELD_DATA = 'd';
 	const FIELD_MTIME = 'm';
 	const FIELD_TAGS = 't';
@@ -51,9 +52,10 @@ class Rtcache_Cache_Backend {
 	protected $_compressionLib;
 
 	/**
-	 * Contruct Rtcache_Cache Redis backend
+	 * Contruct Rtcache\Cache\Backend backend
+	 * 
 	 * @param array $options
-	 * @return Rtcache_Cache_Backend_Redis
+	 * @return Rtcache\Cache\Backend
 	 */
 	public function __construct($options = array()) {
 		if (empty($options['server'])) {
@@ -66,7 +68,7 @@ class Rtcache_Cache_Backend {
 
 		$timeout = isset($options['timeout']) ? $options['timeout'] : self::DEFAULT_CONNECT_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-		$this->_redis = new Credis_Client($options['server'], $options['port'], $timeout, $persistent);
+		$this->_redis = new \Credis_Client($options['server'], $options['port'], $timeout, $persistent);
 
 		if (isset($options['force_standalone']) && $options['force_standalone']) {
 			$this->_redis->forceStandalone();
@@ -382,18 +384,18 @@ class Rtcache_Cache_Backend {
 	 * Clean some cache records
 	 *
 	 * Available modes are :
-	 * 'all' (default)  => remove all cache entries ($tags is not used)
-	 * 'old'            => runs _collectGarbage()
-	 * 'matchingTag'    => supported
-	 * 'notMatchingTag' => supported
-	 * 'matchingAnyTag' => supported
+	 * 'all'   => remove all cache entries ($tags is not used)
+	 * 'old'   => runs _collectGarbage()
+	 * 'matchingTag'(default)    => clears the entries in cache which contains all of the given tag in the set of tags
+	 * 'notMatchingTag' => clears the cache entries for which no tag all specified in a set of tags
+	 * 'matchingAnyTag' => clears the cache entry, for which at least one of the set of tags is present in a set of tags
 	 *
 	 * @param  string $mode Clean mode
 	 * @param  array  $tags Array of tags
 	 * @throws Rtcache_Cache_Exception
 	 * @return boolean True if no problem
 	 */
-	public function clean($mode = self::CLEANING_MODE_ALL, $tags = array()) {
+	public function clean($mode = self::CLEANING_MODE_MATCHING_TAG, $tags = array()) {
 		if ($tags && !is_array($tags)) {
 			$tags = array($tags);
 		}
@@ -435,14 +437,6 @@ class Rtcache_Cache_Backend {
 		return (bool) $result;
 	}
 
-	/**
-	 * Return true if the automatic cleaning is available for the backend
-	 *
-	 * @return boolean
-	 */
-	public function isAutomaticCleaningAvailable() {
-		return TRUE;
-	}
 
 	/**
 	 * Set an option
@@ -580,17 +574,7 @@ class Rtcache_Cache_Backend {
 		return array();
 	}
 
-	/**
-	 * Return the filling percentage of the backend storage
-	 *
-	 * @throws Rtcache_Cache_Exception
-	 * @return int integer between 0 and 100
-	 */
-	public function getFillingPercentage() {
-		return 0;
-	}
-
-	/**
+		/**
 	 * Return an array of metadatas for the given cache id
 	 *
 	 * The array must include these keys :
