@@ -10,11 +10,10 @@
  * @version v.0.1
  * @package Rtcache
  */
-
 abstract class Rtcache_Cache_Tag {
 
 	/**
-	 * Calculated ID associated to this slot.
+	 * ID associated to this slot.
 	 * 
 	 * @var string
 	 */
@@ -36,7 +35,7 @@ abstract class Rtcache_Cache_Tag {
 	 */
 	public function clean() {
 		$this->getBackend()->clean(
-			Cm_Cache::CLEANING_MODE_MATCHING_TAG, array($this->getNativeId())
+			Rtcache_Cache_Backend::CLEANING_MODE_MATCHING_TAG, array($this->getNativeId())
 		);
 	}
 
@@ -45,7 +44,7 @@ abstract class Rtcache_Cache_Tag {
 	 * This method has to be public, because we use it in Slot::addTag()
 	 * to check equality of tag and slot backends.
 	 * 
-	 * @return Cm_Cache_Backend_Interface
+	 * @return Rtcache_Cache_Backend
 	 */
 	public abstract function getBackend();
 	/**

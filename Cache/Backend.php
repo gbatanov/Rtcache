@@ -8,6 +8,11 @@
  */
 class Rtcache_Cache_Backend {
 
+	const CLEANING_MODE_ALL = 'all';
+	const CLEANING_MODE_OLD = 'old';
+	const CLEANING_MODE_MATCHING_TAG = 'matchingTag';
+	const CLEANING_MODE_NOT_MATCHING_TAG = 'notMatchingTag';
+	const CLEANING_MODE_MATCHING_ANY_TAG = 'all';
 	const SET_IDS = 'zc:ids';
 	const SET_TAGS = 'zc:tags';
 	const PREFIX_KEY = 'zc:k:';
@@ -26,29 +31,22 @@ class Rtcache_Cache_Backend {
 		'logging' => false,
 		'logger' => null
 	);
-
 	/**
 	 * Available options
 	 *
 	 * @var array available options
 	 */
 	protected $_options = array();
-
 	/** @var Credis_Client */
 	protected $_redis;
-
 	/** @var bool */
 	protected $_notMatchingTags = FALSE;
-
 	/** @var int */
 	protected $_compressTags = 0;
-
 	/** @var int */
 	protected $_compressData = 0;
-
 	/** @var int */
 	protected $_compressThreshold = 20480;
-
 	/** @var string */
 	protected $_compressionLib;
 
@@ -59,16 +57,16 @@ class Rtcache_Cache_Backend {
 	 */
 	public function __construct($options = array()) {
 		if (empty($options['server'])) {
-			Rtcache_Cache::throwException('Redis \'server\' not specified.');
+			self::throwException('Redis \'server\' not specified.');
 		}
 
 		if (empty($options['port']) && substr($options['server'], 0, 1) != '/') {
-			Rtcache_Cache::throwException('Redis \'port\' not specified.');
+			self::throwException('Redis \'port\' not specified.');
 		}
 
 		$timeout = isset($options['timeout']) ? $options['timeout'] : self::DEFAULT_CONNECT_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-		$this->_redis = new Rtcache_Credis_Client($options['server'], $options['port'], $timeout, $persistent);
+		$this->_redis = new Credis_Client($options['server'], $options['port'], $timeout, $persistent);
 
 		if (isset($options['force_standalone']) && $options['force_standalone']) {
 			$this->_redis->forceStandalone();
@@ -82,14 +80,14 @@ class Rtcache_Cache_Backend {
 		}
 
 		if (!empty($options['password'])) {
-			$this->_redis->auth($options['password']) or Rtcache_Cache::throwException('Unable to authenticate with the redis server.');
+			$this->_redis->auth($options['password']) or self::throwException('Unable to authenticate with the redis server.');
 		}
 
 		// Always select database on startup in case persistent connection is re-used by other code
 		if (empty($options['database'])) {
 			$options['database'] = 0;
 		}
-		$this->_redis->select((int) $options['database']) or Rtcache_Cache::throwException('The redis database could not be selected.');
+		$this->_redis->select((int) $options['database']) or self::throwException('The redis database could not be selected.');
 
 		if (isset($options['notMatchingTags'])) {
 			$this->_notMatchingTags = (bool) $options['notMatchingTags'];
@@ -395,16 +393,16 @@ class Rtcache_Cache_Backend {
 	 * @throws Rtcache_Cache_Exception
 	 * @return boolean True if no problem
 	 */
-	public function clean($mode = Rtcache_Cache::CLEANING_MODE_ALL, $tags = array()) {
+	public function clean($mode = self::CLEANING_MODE_ALL, $tags = array()) {
 		if ($tags && !is_array($tags)) {
 			$tags = array($tags);
 		}
 
-		if ($mode == Rtcache_Cache::CLEANING_MODE_ALL) {
+		if ($mode == self::CLEANING_MODE_ALL) {
 			return $this->_redis->flushDb();
 		}
 
-		if ($mode == Rtcache_Cache::CLEANING_MODE_OLD) {
+		if ($mode == self::CLEANING_MODE_OLD) {
 			$this->_collectGarbage();
 			return TRUE;
 		}
@@ -416,23 +414,23 @@ class Rtcache_Cache_Backend {
 		$result = TRUE;
 
 		switch ($mode) {
-			case Rtcache_Cache::CLEANING_MODE_MATCHING_TAG:
+			case self::CLEANING_MODE_MATCHING_TAG:
 
 				$this->_removeByMatchingTags($tags);
 				break;
 
-			case Rtcache_Cache::CLEANING_MODE_NOT_MATCHING_TAG:
+			case self::CLEANING_MODE_NOT_MATCHING_TAG:
 
 				$this->_removeByNotMatchingTags($tags);
 				break;
 
-			case Rtcache_Cache::CLEANING_MODE_MATCHING_ANY_TAG:
+			case self::CLEANING_MODE_MATCHING_ANY_TAG:
 
 				$this->_removeByMatchingAnyTags($tags);
 				break;
 
 			default:
-				Rtcache_Cache::throwException('Invalid mode for clean() method: ' . $mode);
+				self::throwException('Invalid mode for clean() method: ' . $mode);
 		}
 		return (bool) $result;
 	}
@@ -445,7 +443,8 @@ class Rtcache_Cache_Backend {
 	public function isAutomaticCleaningAvailable() {
 		return TRUE;
 	}
-/**
+
+	/**
 	 * Set an option
 	 *
 	 * @param  string $name
@@ -455,11 +454,11 @@ class Rtcache_Cache_Backend {
 	 */
 	public function setOption($name, $value) {
 		if (!is_string($name)) {
-			Rtcache_Cache::throwException("Incorrect option name : $name");
+			self::throwException("Incorrect option name : $name");
 		}
 		$name = strtolower($name);
 		if (!array_key_exists($name, $this->_options)) {
-			Rtcache_Cache::throwException("Incorrect option name : $name");
+			self::throwException("Incorrect option name : $name");
 		}
 		$this->_options[$name] = $value;
 	}
@@ -480,7 +479,6 @@ class Rtcache_Cache_Backend {
 		return $specificLifetime;
 	}
 
-
 	/**
 	 * Set the frontend directives
 	 *
@@ -490,10 +488,10 @@ class Rtcache_Cache_Backend {
 	 */
 	public function setDirectives($directives) {
 		if (!is_array($directives))
-			Rtcache_Cache::throwException('Directives parameter must be an array');
+			self::throwException('Directives parameter must be an array');
 		while (list($name, $value) = each($directives)) {
 			if (!is_string($name)) {
-				Rtcache_Cache::throwException("Incorrect option name : $name");
+				self::throwException("Incorrect option name : $name");
 			}
 			$name = strtolower($name);
 			if (array_key_exists($name, $this->_directives)) {
@@ -503,7 +501,7 @@ class Rtcache_Cache_Backend {
 
 		$lifetime = $this->getLifetime(false);
 		if ($lifetime > self::MAX_LIFETIME) {
-			Rtcache_Cache::throwException('Redis backend has a limit of 30 days (2592000 seconds) for the lifetime');
+			self::throwException('Redis backend has a limit of 30 days (2592000 seconds) for the lifetime');
 		}
 	}
 
@@ -559,7 +557,7 @@ class Rtcache_Cache_Backend {
 	 */
 	public function getIdsNotMatchingTags($tags = array()) {
 		if (!$this->_notMatchingTags) {
-			Rtcache_Cache::throwException("notMatchingTags is currently disabled.");
+			self::throwException("notMatchingTags is currently disabled.");
 		}
 		if ($tags) {
 			return (array) $this->_redis->sDiff(self::SET_IDS, $this->_preprocessTagIds($tags));
@@ -733,6 +731,9 @@ class Rtcache_Cache_Backend {
 	 */
 	public function ___expire($id) {
 		$this->_redis->del(self::PREFIX_KEY . $id);
+	}
+	public static function throwException($msg) {
+		throw new Exception($msg);
 	}
 
 }

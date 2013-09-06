@@ -11,16 +11,22 @@ Folder structure:
 			|-Backend.php
 			|-Slot.php
 			|-Tag.php
-		|-Credis
-			|-Client.php
+		|-demo 
+			|-ClearCache.php
+			|-User.php
+			|-Info.php
+			|-UserSlot.php
+			|-InfoSlot.php
+			|-Tag.php
+			|-autoload.php
+			|-index.php
 		|-vendor
 			|-colinmollenhour
 				|-credis
-					|-Client.php
+					|-Client.php 
 					|-other files
-		|-Cache.php
 
-After loading execute:
+After downloading run in command line:
 
 	>cd path/to/Rtcache
 

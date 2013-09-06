@@ -14,18 +14,16 @@ abstract class Rtcache_Cache_Slot {
 	 * @var array of Rtcache_Cache_Tag
 	 */
 	private $_tags;
-
 	/**
 	 * ID associated to this slot.
 	 * 
 	 * @var string
 	 */
 	private $_id = null;
-
 	/**
 	 * Lifetime of this slot.
 	 */
-	private $_lifetime;
+	protected $lifetime= 3600;
 
 	/**
 	 * Creates a new slot object.
@@ -33,9 +31,8 @@ abstract class Rtcache_Cache_Slot {
 	 * @param string $id   ID of this slot.
 	 * @return Rtcache_Cache_Slot
 	 */
-	public function __construct($id, $lifetime) {
+	public function __construct($id) {
 		$this->_id = $id;
-		$this->_lifetime = $lifetime;
 		$this->_tags = array();
 	}
 
@@ -62,7 +59,7 @@ abstract class Rtcache_Cache_Slot {
 			$tags[] = $id;
 		}
 		$raw = serialize($data);
-		$this->_getBackend()->save($raw, $this->_id, $tags, $this->_lifetime);
+		$this->_getBackend()->save($raw, $this->_id, $tags, $this->lifetime);
 	}
 
 	/**
@@ -80,9 +77,9 @@ abstract class Rtcache_Cache_Slot {
 	 * @param Rtcache_Cache_Tag $tag   Tag object to associate.
 	 * @return void
 	 */
-	public function addTag(Rtcache_Cache_Frontend_Tag $tag) {
+	public function addTag(Rtcache_Cache_Tag $tag) {
 		if ($tag->getBackend() !== $this->_getBackend()) {
-			Rtcache_Cache::throwException("Backends for tag " . get_class($tag) . " and slot " . get_class($this) . " must be same");
+			throw new Exception("Backends for tag " . get_class($tag) . " and slot " . get_class($this) . " must be same");
 		}
 		$this->_tags[] = $tag;
 	}
