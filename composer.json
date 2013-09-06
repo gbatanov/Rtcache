@@ -1,7 +1,7 @@
 {
 	"name": "gbatanov/rdc",
 	"description": "Redis tagged cache",
-	"version": "0.1.2.0-dev",
+	"version": "0.1.2.1-dev",
 	"license": "Apache-2.0",
 	"authors": [
 		{
@@ -18,5 +18,5 @@
 			"Cache/Slot.php",
 			"Cache/Tag.php"
 		]
-	},
+	}
 }
