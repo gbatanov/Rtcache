@@ -2,9 +2,10 @@
 	"name": "gbatanov/rdc",
 	"description": "Redis tagged cache",
 	"version":"0.1.2-dev",
+	"license": "Apache-2.0",
 	"authors": [
 		{
-			"name": "gbatanov",
+			"name": "George Batanov",
 			"email": "gsb@gsbmail.ru"
 		}
 	],
