@@ -1,8 +1,9 @@
 {
 	"name": "gbatanov/Rtcache",
 	"description": "Redis tagged cache",
-	"version": "0.1.8.0",
+	"version": "0.1.9.0",
 	"license": "Apache-2.0",
+	"type": "library",
 	"authors": [
 		{
 			"name": "George Batanov",
@@ -13,6 +14,10 @@
 		"colinmollenhour/credis": "1.2"
 	},
 	"autoload": {
-		"classmap": ["Cache/"]
+		"classmap": [
+			"Cache/Backend.php",
+			"Cache/Slot.php",
+			"Cache/Tag.php"
+			]
 	}
 }
