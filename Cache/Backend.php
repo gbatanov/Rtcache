@@ -6,13 +6,14 @@
  * @version v.0.1
  * @package Rtcache
  */
+
 namespace Rtcache\Cache;
+
 class Backend {
 
 	const CLEANING_MODE_ALL = 'all';
 	const CLEANING_MODE_OLD = 'old';
 	const CLEANING_MODE_MATCHING_TAG = 'matchingTag';
-	const CLEANING_MODE_NOT_MATCHING_TAG = 'notMatchingTag';
 	const CLEANING_MODE_MATCHING_ANY_TAG = 'matchingAnyTag';
 	const SET_IDS = 'rtc:ids';
 	const SET_TAGS = 'rtc:tags';
@@ -32,22 +33,27 @@ class Backend {
 		'logging' => false,
 		'logger' => null
 	);
+
 	/**
 	 * Available options
 	 *
 	 * @var array available options
 	 */
 	protected $_options = array();
+
 	/** @var Credis_Client */
 	protected $_redis;
-	/** @var bool */
-	protected $_notMatchingTags = FALSE;
+
+	
 	/** @var int */
 	protected $_compressTags = 0;
+
 	/** @var int */
 	protected $_compressData = 0;
+
 	/** @var int */
 	protected $_compressThreshold = 20480;
+
 	/** @var string */
 	protected $_compressionLib;
 
@@ -91,9 +97,6 @@ class Backend {
 		}
 		$this->_redis->select((int) $options['database']) or self::throwException('The redis database could not be selected.');
 
-		if (isset($options['notMatchingTags'])) {
-			$this->_notMatchingTags = (bool) $options['notMatchingTags'];
-		}
 
 		if (isset($options['compress_tags'])) {
 			$this->_compressTags = (int) $options['compress_tags'];
@@ -132,27 +135,15 @@ class Backend {
 	/**
 	 * Load value with given id from cache
 	 *
-	 * @param  string  $id                     Cache id
-	 * @param  boolean $doNotTestCacheValidity If set to true, the cache validity won't be tested
+	 * @param  string  $id Cache id
 	 * @return bool|string
 	 */
-	public function load($id, $doNotTestCacheValidity = false) {
+	public function load($id) {
 		$data = $this->_redis->hGet(self::PREFIX_KEY . $id, self::FIELD_DATA);
 		if ($data === NULL) {
 			return FALSE;
 		}
 		return $this->_decodeData($data);
-	}
-
-	/**
-	 * Test if a cache is available or not (for the given id)
-	 *
-	 * @param  string $id Cache id
-	 * @return bool|int False if record is not available or "last modified" timestamp of the available cache record
-	 */
-	public function test($id) {
-		$mtime = $this->_redis->hGet(self::PREFIX_KEY . $id, self::FIELD_MTIME);
-		return ($mtime ? $mtime : FALSE);
 	}
 
 	/**
@@ -214,10 +205,6 @@ class Backend {
 			}
 		}
 
-		// Update the list with all the ids
-		if ($this->_notMatchingTags) {
-			$this->_redis->sAdd(self::SET_IDS, $id);
-		}
 
 		$this->_redis->exec();
 
@@ -239,10 +226,6 @@ class Backend {
 		// Remove data
 		$this->_redis->del(self::PREFIX_KEY . $id);
 
-		// Remove id from list of all ids
-		if ($this->_notMatchingTags) {
-			$this->_redis->sRem(self::SET_IDS, $id);
-		}
 
 		// Update the id list for each tag
 		foreach ($tags as $tag) {
@@ -257,26 +240,6 @@ class Backend {
 	/**
 	 * @param array $tags
 	 */
-	protected function _removeByNotMatchingTags($tags) {
-		$ids = $this->getIdsNotMatchingTags($tags);
-		if ($ids) {
-			$this->_redis->pipeline()->multi();
-
-			// Remove data
-			$this->_redis->del($this->_preprocessIds($ids));
-
-			// Remove ids from list of all ids
-			if ($this->_notMatchingTags) {
-				$this->_redis->sRem(self::SET_IDS, $ids);
-			}
-
-			$this->_redis->exec();
-		}
-	}
-
-	/**
-	 * @param array $tags
-	 */
 	protected function _removeByMatchingTags($tags) {
 		$ids = $this->getIdsMatchingTags($tags);
 		if ($ids) {
@@ -284,11 +247,6 @@ class Backend {
 
 			// Remove data
 			$this->_redis->del($this->_preprocessIds($ids));
-
-			// Remove ids from list of all ids
-			if ($this->_notMatchingTags) {
-				$this->_redis->sRem(self::SET_IDS, $ids);
-			}
 
 			$this->_redis->exec();
 		}
@@ -305,11 +263,6 @@ class Backend {
 		if ($ids) {
 			// Remove data
 			$this->_redis->del($this->_preprocessIds($ids));
-
-			// Remove ids from list of all ids
-			if ($this->_notMatchingTags) {
-				$this->_redis->sRem(self::SET_IDS, $ids);
-			}
 		}
 
 		// Remove tag id lists
@@ -348,9 +301,6 @@ class Backend {
 						// Remove incrementally to reduce memory usage
 						if (count($expired) % 100 == 0 && $numNotExpired > 0) {
 							$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $expired);
-							if ($this->_notMatchingTags) { // Clean up expired ids from ids set
-								$this->_redis->sRem(self::SET_IDS, $expired);
-							}
 							$expired = array();
 						}
 					}
@@ -367,16 +317,8 @@ class Backend {
 			// Clean up expired ids from tag ids set
 			else if (count($expired)) {
 				$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $expired);
-				if ($this->_notMatchingTags) { // Clean up expired ids from ids set
-					$this->_redis->sRem(self::SET_IDS, $expired);
-				}
 			}
 			unset($expired);
-		}
-
-		// Clean up global list of ids for ids with no tag
-		if ($this->_notMatchingTags) {
-			// TODO
 		}
 	}
 
@@ -421,10 +363,6 @@ class Backend {
 				$this->_removeByMatchingTags($tags);
 				break;
 
-			case self::CLEANING_MODE_NOT_MATCHING_TAG:
-
-				$this->_removeByNotMatchingTags($tags);
-				break;
 
 			case self::CLEANING_MODE_MATCHING_ANY_TAG:
 
@@ -436,7 +374,6 @@ class Backend {
 		}
 		return (bool) $result;
 	}
-
 
 	/**
 	 * Set an option
@@ -505,16 +442,13 @@ class Backend {
 	 * @return array array of stored cache ids (string)
 	 */
 	public function getIds() {
-		if ($this->_notMatchingTags) {
-			return (array) $this->_redis->sMembers(self::SET_IDS);
-		} else {
-			$keys = $this->_redis->keys(self::PREFIX_KEY . '*');
-			$prefixLen = strlen(self::PREFIX_KEY);
-			foreach ($keys as $index => $key) {
-				$keys[$index] = substr($key, $prefixLen);
-			}
-			return $keys;
+
+		$keys = $this->_redis->keys(self::PREFIX_KEY . '*');
+		$prefixLen = strlen(self::PREFIX_KEY);
+		foreach ($keys as $index => $key) {
+			$keys[$index] = substr($key, $prefixLen);
 		}
+		return $keys;
 	}
 
 	/**
@@ -542,24 +476,6 @@ class Backend {
 	}
 
 	/**
-	 * Return an array of stored cache ids which don't match given tags
-	 *
-	 * In case of multiple tags, a negated logical AND is made between tags
-	 *
-	 * @param array $tags array of tags
-	 * @return array array of not matching cache ids (string)
-	 */
-	public function getIdsNotMatchingTags($tags = array()) {
-		if (!$this->_notMatchingTags) {
-			self::throwException("notMatchingTags is currently disabled.");
-		}
-		if ($tags) {
-			return (array) $this->_redis->sDiff(self::SET_IDS, $this->_preprocessTagIds($tags));
-		}
-		return (array) $this->_redis->sMembers(self::SET_IDS);
-	}
-
-	/**
 	 * Return an array of stored cache ids which match any given tags
 	 *
 	 * In case of multiple tags, a logical OR is made between tags
@@ -574,7 +490,7 @@ class Backend {
 		return array();
 	}
 
-		/**
+	/**
 	 * Return an array of metadatas for the given cache id
 	 *
 	 * The array must include these keys :
@@ -716,6 +632,7 @@ class Backend {
 	public function ___expire($id) {
 		$this->_redis->del(self::PREFIX_KEY . $id);
 	}
+
 	public static function throwException($msg) {
 		throw new Exception($msg);
 	}
