@@ -1,7 +1,7 @@
 {
 	"name": "gbatanov/Rtcache",
 	"description": "Redis tagged cache",
-	"version": "0.1.17.0",
+	"version": "0.1.18.0",
 	"license": "Apache-2.0",
 	"type": "library",
 	"authors": [
@@ -14,7 +14,8 @@
 		"colinmollenhour/credis": "1.2"
 	},
 	"autoload": {
-		"psr-0": {"Cache\\": "/"}
+		"psr-0": { "Cache\\": "" }
 	},
+	"target-dir": "Cache",
 	"minimum-stability": "dev"
 }
