@@ -12,7 +12,7 @@
  * @package rtcache.demo
  */
 
-use Rtcache\demo as Demo;
+
 ini_set('log_errors', 'on');
 ini_set('error_log', 'php_errors.txt');
 require_once dirname(__FILE__) . '/autoload.php';
@@ -22,13 +22,13 @@ require_once dirname(__FILE__) . '/../vendor/autoload.php';
 $options = array();
 $options['server'] = 'localhost';
 $options['port'] = 6379;
-$backend = new Rtcache\Cache\Backend($options);
-$user1 = new Demo\User();
-$user2 = new Demo\User();
-$info = new Demo\Info();
+$backend = new Cache\Backend($options);
+$user1 = new demo\User();
+$user2 = new demo\User();
+$info = new demo\Info();
 
 // Full clearing the cache
-Demo\ClearCache::clearAll();
+demo\ClearCache::clearAll();
 echo '<br />With manual clearing <br />';
 $user1->addParams('param_set1');
 $user1->addParams('param_set2');
@@ -51,8 +51,8 @@ echo "Sets 1,2,3 for user2 before clear cache <br />";
 print_r($user2->getParams());
 echo "<br />";
 // Clean the cache for user1
-$tag = new Demo\Tag('user_' . $user1->getId());
-Demo\ClearCache::clearTags((array) $tag->getNativeId());
+$tag = new demo\Tag('user_' . $user1->getId());
+demo\ClearCache::clearTags((array) $tag->getNativeId());
 echo "Sets 1,2,3 for user1 after clear cache <br />";
 // For user1 now displays all records
 print_r($user1->getParams());

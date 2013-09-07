@@ -7,7 +7,7 @@
  * @package Rtcache
  */
 
-namespace Rtcache\Cache;
+namespace Cache;
 
 class Backend {
 

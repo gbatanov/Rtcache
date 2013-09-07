@@ -11,7 +11,7 @@
  * @package Rtcache
  */
 
-namespace Rtcache\Cache;
+namespace Cache;
 
 abstract class Tag {
 
