@@ -1,7 +1,7 @@
 {
 	"name": "gbatanov/Rtcache",
 	"description": "Redis tagged cache",
-	"version": "0.1.19.0",
+	"version": "0.2.0.0",
 	"license": "Apache-2.0",
 	"type": "library",
 	"authors": [
@@ -14,7 +14,11 @@
 		"colinmollenhour/credis": "1.2"
 	},
 	"autoload": {
-		"psr-0": { "Rtcache_": "Rtcache/" }
+		"classmap": [ 
+			"Backend.php", 
+			"Slot.php",
+			"Tag.php" 
+			]
 	},
 	"minimum-stability": "dev"
 }
