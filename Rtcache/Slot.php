@@ -6,10 +6,7 @@
  * @version v.0.1
  * @package Rtcache
  */
-
-namespace Cache;
-
-abstract class Slot {
+abstract class Rtcache_Slot {
 
 	/**
 	 * Tags attached to this slot.
@@ -17,12 +14,14 @@ abstract class Slot {
 	 * @var array of Rtcache_Cache_Tag
 	 */
 	private $_tags;
+
 	/**
 	 * ID associated to this slot.
 	 * 
 	 * @var string
 	 */
 	private $_id = null;
+
 	/**
 	 * Lifetime of this slot.
 	 */
@@ -82,7 +81,7 @@ abstract class Slot {
 	 */
 	public function addTag(Tag $tag) {
 		if ($tag->getBackend() !== $this->_getBackend()) {
-			throw new \Exception("Backends for tag " . get_class($tag) . " and slot " . get_class($this) . " must be same");
+			throw new Exception("Backends for tag " . get_class($tag) . " and slot " . get_class($this) . " must be same");
 		}
 		$this->_tags[] = $tag;
 	}

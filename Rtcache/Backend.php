@@ -6,10 +6,7 @@
  * @version v.0.1
  * @package Rtcache
  */
-
-namespace Cache;
-
-class Backend {
+class Rtcache_Backend {
 
 	const CLEANING_MODE_ALL = 'all';
 	const CLEANING_MODE_OLD = 'old';
@@ -44,7 +41,6 @@ class Backend {
 	/** @var Credis_Client */
 	protected $_redis;
 
-	
 	/** @var int */
 	protected $_compressTags = 0;
 
@@ -74,7 +70,7 @@ class Backend {
 
 		$timeout = isset($options['timeout']) ? $options['timeout'] : self::DEFAULT_CONNECT_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-		$this->_redis = new \Credis_Client($options['server'], $options['port'], $timeout, $persistent);
+		$this->_redis = new Credis_Client($options['server'], $options['port'], $timeout, $persistent);
 
 		if (isset($options['force_standalone']) && $options['force_standalone']) {
 			$this->_redis->forceStandalone();

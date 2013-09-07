@@ -22,13 +22,13 @@ require_once dirname(__FILE__) . '/../vendor/autoload.php';
 $options = array();
 $options['server'] = 'localhost';
 $options['port'] = 6379;
-$backend = new Cache\Backend($options);
-$user1 = new demo\User();
-$user2 = new demo\User();
-$info = new demo\Info();
+$backend = new Rtcache_Backend($options);
+$user1 = new User();
+$user2 = new User();
+$info = new Info();
 
 // Full clearing the cache
-demo\ClearCache::clearAll();
+ClearCache::clearAll();
 echo '<br />With manual clearing <br />';
 $user1->addParams('param_set1');
 $user1->addParams('param_set2');
@@ -51,8 +51,8 @@ echo "Sets 1,2,3 for user2 before clear cache <br />";
 print_r($user2->getParams());
 echo "<br />";
 // Clean the cache for user1
-$tag = new demo\Tag('user_' . $user1->getId());
-demo\ClearCache::clearTags((array) $tag->getNativeId());
+$tag = new Tag('user_' . $user1->getId());
+ClearCache::clearTags((array) $tag->getNativeId());
 echo "Sets 1,2,3 for user1 after clear cache <br />";
 // For user1 now displays all records
 print_r($user1->getParams());

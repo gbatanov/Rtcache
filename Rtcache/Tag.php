@@ -10,10 +10,7 @@
  * @version v.0.1
  * @package Rtcache
  */
-
-namespace Cache;
-
-abstract class Tag {
+abstract class Rtcache_Tag {
 
 	/**
 	 * ID associated to this slot.
@@ -38,7 +35,7 @@ abstract class Tag {
 	 */
 	public function clean() {
 		$this->getBackend()->clean(
-			Backend::CLEANING_MODE_MATCHING_TAG, array($this->getNativeId())
+			Rtcache_Backend::CLEANING_MODE_MATCHING_TAG, array($this->getNativeId())
 		);
 	}
 
@@ -50,6 +47,7 @@ abstract class Tag {
 	 * @return \Rtcache\Cache\Backend
 	 */
 	public abstract function getBackend();
+
 	/**
 	 * Returns generated ID of this tag.
 	 * This method must be public, because it is used in Slot.

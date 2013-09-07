@@ -7,8 +7,8 @@
  * @version v.0.1
  * @package rtcache.demo
  */
-namespace demo;
-class UserSlot extends \Cache\Slot {
+
+class UserSlot extends Rtcache_Slot {
 
 	protected $lifetime = 3600;
 	private $_userId = 0;
