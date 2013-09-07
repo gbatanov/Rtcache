@@ -3,7 +3,7 @@
 /**
  * Slot-based caching frontend.
  * 
- * @version v.0.1
+ * @version v.0.2
  * @package Rtcache
  */
 abstract class Rtcache_Slot {

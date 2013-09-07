@@ -7,7 +7,7 @@
  * Tags are typized; each tag is parametrized according to 
  * specific needs.
  * 
- * @version v.0.1
+ * @version v.0.2
  * @package Rtcache
  */
 abstract class Rtcache_Tag {

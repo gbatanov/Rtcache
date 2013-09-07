@@ -4,7 +4,7 @@
  * autoloader for demo project
  * 
  * @author George Batanov <gsb@gsbmail.ru>
- * @version v.0.1
+ * @version v.0.2
  * @package rtcache.demo
  */
 function autoload($class) {

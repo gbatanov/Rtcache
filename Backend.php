@@ -3,7 +3,7 @@
 /**
  * Redis adapter 
  *
- * @version v.0.1
+ * @version v.0.2
  * @package Rtcache
  */
 class Rtcache_Backend {

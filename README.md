@@ -7,24 +7,23 @@ Folder structure:
 ----------------------
 	
 	|-rtcache
-		|-Cache
-			|-Backend.php
-			|-Slot.php
-			|-Tag.php
-		|-demo 
-			|-ClearCache.php
-			|-User.php
-			|-Info.php
-			|-UserSlot.php
-			|-InfoSlot.php
-			|-Tag.php
-			|-autoload.php
-			|-index.php
-		|-vendor
-			|-colinmollenhour
-				|-credis
-					|-Client.php 
-					|-other files
+		|-Backend.php
+		|-Slot.php
+		|-Tag.php
+	|-demo 
+		|-ClearCache.php
+		|-User.php
+		|-Info.php
+		|-UserSlot.php
+		|-InfoSlot.php
+		|-Tag.php
+		|-autoload.php
+		|-index.php
+	|-vendor
+		|-colinmollenhour
+			|-credis
+				|-Client.php 
+				|-other files
 
 After downloading run in command line:
 
@@ -44,6 +43,7 @@ Rtcache_CacheBackend based on code and ideas:
 Rtcache is not tied to a specific Frameworks.
  
  - 05.09.2013 v.0.1
+ - 08.09.2013 v.0.2
  
 George Batanov
 gsb@gsbmail.ru

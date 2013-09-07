@@ -4,7 +4,7 @@
  * Working Tag class
  *
  * @author gbatanov
- * @version v.0.1
+ * @version v.0.2
  * @package rtcache.demo
  */
 class Tag extends Rtcache_Tag {
