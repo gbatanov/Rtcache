@@ -1,7 +1,7 @@
 {
 	"name": "gbatanov/Rtcache",
 	"description": "Redis tagged cache",
-	"version": "0.1.6.0-dev",
+	"version": "0.1.7.0-dev",
 	"license": "Apache-2.0",
 	"authors": [
 		{
@@ -9,7 +9,7 @@
 			"email": "gsb@gsbmail.ru"
 		}
 	],
-	"require-dev": {
+	"require": {
 		"colinmollenhour/credis": "1.2"
 	},
 	"autoload": {
