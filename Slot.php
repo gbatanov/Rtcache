@@ -1,19 +1,21 @@
 <?php
 
 /**
- * Slot-based caching frontend.
+ * Slot-based caching implementation.
  * 
- * @version v.0.2
+ * @version v.0.3
  * @package Rtcache
  */
 abstract class Rtcache_Slot {
 
+	protected $backend = null;
+
 	/**
 	 * Tags attached to this slot.
 	 * 
-	 * @var array of Rtcache_Cache_Tag
+	 * @var array of tags
 	 */
-	private $_tags;
+	protected $_tags;
 
 	/**
 	 * ID associated to this slot.
@@ -23,7 +25,8 @@ abstract class Rtcache_Slot {
 	private $_id = null;
 
 	/**
-	 * Lifetime of this slot.
+	 * Lifetime of this slot. Default 1 hour.
+	 * @var int
 	 */
 	protected $lifetime = 3600;
 
@@ -31,7 +34,7 @@ abstract class Rtcache_Slot {
 	 * Creates a new slot object.
 	 * 
 	 * @param string $id   ID of this slot.
-	 * @return Rtcache_Cache_Slot
+	 * @return Rtcache_Slot
 	 */
 	public function __construct($id) {
 		$this->_id = $id;
@@ -55,13 +58,8 @@ abstract class Rtcache_Slot {
 	 * @return void
 	 */
 	public function save($data) {
-		$tags = array();
-		foreach ($this->_tags as $tag) {
-			$id = $tag->getNativeId();
-			$tags[] = $id;
-		}
 		$raw = serialize($data);
-		$this->_getBackend()->save($raw, $this->_id, $tags, $this->lifetime);
+		$this->_getBackend()->save($raw, $this->_id, $this->_tags, $this->lifetime);
 	}
 
 	/**
@@ -74,22 +72,16 @@ abstract class Rtcache_Slot {
 	}
 
 	/**
-	 * Associates a tag with current slot.
-	 * 
-	 * @param Rtcache_Cache_Tag $tag   Tag object to associate.
-	 * @return void
-	 */
-	public function addTag(Tag $tag) {
-		if ($tag->getBackend() !== $this->_getBackend()) {
-			throw new Exception("Backends for tag " . get_class($tag) . " and slot " . get_class($this) . " must be same");
-		}
-		$this->_tags[] = $tag;
-	}
-
-	/**
 	 * Returns backend object responsible for this cache slot.
 	 * 
-	 * @return Rtcache_Cache_Backend
+	 * @return Rtcache_Backend
 	 */
-	protected abstract function _getBackend();
+	protected function _getBackend() {
+		return $this->backend;
+	}
+
+}
+
+class Rtcache_SlotException extends Exception{
+	
 }

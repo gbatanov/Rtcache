@@ -8,7 +8,7 @@
  * after clearing the cache by the tag.
  * 
  * @author George Batanov <gsb@gsbmail.ru>
- * @version v.0.2
+ * @version v.0.3
  * @package rtcache.demo
  */
 
@@ -51,8 +51,7 @@ echo "Sets 1,2,3 for user2 before clear cache <br />";
 print_r($user2->getParams());
 echo "<br />";
 // Clean the cache for user1
-$tag = new Tag('user_' . $user1->getId());
-ClearCache::clearTags((array) $tag->getNativeId());
+ClearCache::clearTags((array) 'user_' . $user1->getId());
 echo "Sets 1,2,3 for user1 after clear cache <br />";
 // For user1 now displays all records
 print_r($user1->getParams());

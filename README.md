@@ -9,14 +9,12 @@ Folder structure:
 	|-rtcache
 		|-Backend.php
 		|-Slot.php
-		|-Tag.php
 	|-demo 
 		|-ClearCache.php
 		|-User.php
 		|-Info.php
 		|-UserSlot.php
 		|-InfoSlot.php
-		|-Tag.php
 		|-autoload.php
 		|-index.php
 	|-vendor
@@ -43,7 +41,7 @@ Rtcache_CacheBackend based on code and ideas:
 Rtcache is not tied to a specific Frameworks.
  
  - 05.09.2013 v.0.1
- - 08.09.2013 v.0.2
+ - 08.09.2013 v.0.3
  
 George Batanov
 gsb@gsbmail.ru

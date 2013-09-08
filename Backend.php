@@ -3,7 +3,7 @@
 /**
  * Redis adapter 
  *
- * @version v.0.2
+ * @version v.0.3
  * @package Rtcache
  */
 class Rtcache_Backend {
@@ -54,10 +54,10 @@ class Rtcache_Backend {
 	protected $_compressionLib;
 
 	/**
-	 * Contruct Rtcache\Cache\Backend backend
+	 * Contruct Rtcache_Backend backend
 	 * 
 	 * @param array $options
-	 * @return Rtcache\Cache\Backend
+	 * @return Rtcache_Backend
 	 */
 	public function __construct($options = array()) {
 		if (empty($options['server'])) {
@@ -330,7 +330,7 @@ class Rtcache_Backend {
 	 *
 	 * @param  string $mode Clean mode
 	 * @param  array  $tags Array of tags
-	 * @throws Rtcache_Cache_Exception
+	 * @throws Rtcache_Exception
 	 * @return boolean True if no problem
 	 */
 	public function clean($mode = self::CLEANING_MODE_MATCHING_TAG, $tags = array()) {
@@ -630,7 +630,11 @@ class Rtcache_Backend {
 	}
 
 	public static function throwException($msg) {
-		throw new Exception($msg);
+		throw new Rtcache_Exception($msg);
 	}
 
+}
+
+class Rtcache_Exception extends Exception {
+	
 }

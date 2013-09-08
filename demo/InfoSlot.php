@@ -4,35 +4,31 @@
  * Working UserSlot class
  *
  * @author gbatanov
- * @version v.0.2
+ * @version v.0.3
  * @package rtcache.demo
  */
-
 class InfoSlot extends Rtcache_Slot {
 
 	protected $lifetime = 60;
 	private $_infoId = 0;
 	private $_userId = 0;
 
-	public function __construct(Info $info, $userId) {
-		$this->_infoId = $info->getId();
-		$this->_userId = $userId;
-		parent::__construct('info_' . $this->_infoId . '_' . $this->_userId);
-	}
-
-	public function _getBackend() {
+	public function __construct(Info $info, $params = array()) {
 		global $backend;
-		return $backend;
+		$this->backend = $backend;
+		$this->_infoId = $info->getId();
+		$this->_userId = isset($params['userId']) ? $params['userId'] : 0;
+		parent::__construct('info_' . $this->_infoId . '_' . md5(serialize($params)));
 	}
 
 	public function save($data) {
-		$tag = new Tag('info');
-		$this->addTag($tag);
-		$tag2 = new Tag('info_' . $this->_infoId);
-		$this->addTag($tag2);
-		$tag3 = new Tag('user_' . $this->_userId);
-		$this->addTag($tag3);
+		$this->_tags[] = 'info';
+		$this->_tags[] = 'info_' . $this->_infoId;
+		if ($this->_userId) {
+			$this->_tags[] = 'user_' . $this->_userId;
+		}
 		parent::save($data);
 	}
+
 }
-	
+

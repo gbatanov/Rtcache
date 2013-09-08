@@ -4,10 +4,9 @@
  * Static demo class User
  *
  * @author gbatanov
- * @version v.0.2
+ * @version v.0.3
  * @package rtcache.demo
  */
-
 class User {
 
 	private static $_id = 0;
@@ -24,6 +23,7 @@ class User {
 
 	/**
 	 * Imitation get data from database
+	 * Имитация получения данных из БД.
 	 * 
 	 * @return array
 	 */
@@ -34,14 +34,25 @@ class User {
 		return $this->_params;
 	}
 
+	/**
+	 * Добавляем параметры без чистки кэша.
+	 * Данные в кэше становятся неактуальными.
+	 * 
+	 * @param mixed $params
+	 */
 	public function addParams($params) {
 		$this->_params[] = $params;
 	}
 
+	/**
+	 * Добавляем параметры и чистим кэш параметров этого пользователя.
+	 * Данные в кэше будут обновлены при первом обращении к нему.
+	 * 
+	 * @param mixed $params
+	 */
 	public function addParamsWithAutoCleaning($params) {
 		$this->_params[] = $params;
-		$tag = new Tag('user_' . $this->Id);
-		ClearCache::clearTags((array) $tag->getNativeId());
+		ClearCache::clearTags((array) 'user_' . $this->Id);
 	}
 
 	public function getParams() {
@@ -54,10 +65,12 @@ class User {
 		return $data;
 	}
 
+	/**
+	 * Сбрасываем параметры и очищаем кэш этого пользователя.
+	 */
 	public function resetParams() {
 		$this->_params = array();
-		$tag = new Tag('user_' . $this->Id);
-		ClearCache::clearTags((array) $tag->getNativeId());
+		ClearCache::clearTags((array) 'user_' . $this->Id);
 	}
 
 }
