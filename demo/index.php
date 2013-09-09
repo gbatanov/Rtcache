@@ -24,7 +24,10 @@ $backend = new Rtcache_Backend($options);
 $user1 = new User();
 $user2 = new User();
 $info = new Info();
-
+if (isset($_GET['old'])) {
+	ClearCache::clearOld();
+	exit();
+}
 // Full clearing the cache
 ClearCache::clearAll();
 echo '<br />With manual clearing <br /><br />';
@@ -68,4 +71,3 @@ echo "<br />";
 $user1->addParamsWithAutoCleaning('params_set3');
 echo "Sets 1,2,3 for user1 <br />";
 print_r($user1->getParams());
-ClearCache::clearOld();

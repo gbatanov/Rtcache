@@ -3,7 +3,7 @@
 /**
  * Redis adapter 
  *
- * @version v.0.3
+ * @version v.0.4
  * @package Rtcache
  */
 class Rtcache_Backend {
@@ -36,23 +36,16 @@ class Rtcache_Backend {
 	 * @return Rtcache_Backend
 	 */
 	public function __construct($options = array()) {
-		if (empty($options['server'])) {
-			self::throwException('Redis \'server\' not specified.');
-		}
-
-		if (empty($options['port']) && substr($options['server'], 0, 1) != '/') {
-			self::throwException('Redis \'port\' not specified.');
-		}
-
+		$server = isset($options['server']) ? $options['server'] : 'localhost';
+		$port = isset($options['port']) ? $options['port'] : 6379;
 		$timeout = isset($options['timeout']) ? $options['timeout'] : self::DEFAULT_CONNECT_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-		$this->_redis = new Rtcache_Client($options['server'], $options['port'], $timeout, $persistent);
-
+		$this->_redis = new Rtcache_Client($server, $port, $timeout, $persistent);
 
 		$connectRetries = isset($options['connect_retries']) ? (int) $options['connect_retries'] : self::DEFAULT_CONNECT_RETRIES;
 		$this->_redis->setMaxConnectRetries($connectRetries);
 
-		if (!empty($options['read_timeout']) && $options['read_timeout'] > 0) {
+		if (!empty($options['read_timeout']) && (float) $options['read_timeout'] > 0) {
 			$this->_redis->setReadTimeout((float) $options['read_timeout']);
 		}
 
@@ -60,13 +53,14 @@ class Rtcache_Backend {
 			$this->_redis->auth($options['password']) or self::throwException('Unable to authenticate with the redis server.');
 		}
 
-		// Always select database on startup in case persistent connection is re-used by other code
+		// Always select database on startup.
+		// In case persistent connection is re-used by other code.
 		if (empty($options['database'])) {
 			$options['database'] = 0;
 		}
 		$this->_redis->select((int) $options['database']) or self::throwException('The redis database could not be selected.');
 
-
+		// Lifetime cache records by default
 		if (isset($options['lifetimelimit'])) {
 			$this->_lifetimelimit = (int) min($options['lifetimelimit'], self::MAX_LIFETIME);
 		}
@@ -109,7 +103,7 @@ class Rtcache_Backend {
 		$oldTags = $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_TAGS);
 		$oldTags = $oldTags ? explode(',', $oldTags) : array();
 
-//		$this->_redis->pipeline()->multi();
+		// Start transaction
 		$this->_redis->multi();
 
 		// Set the data
@@ -142,13 +136,15 @@ class Rtcache_Backend {
 				$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $id);
 			}
 		}
+		// Ececute commands and end transaction
 		$this->_redis->exec();
 
 		return TRUE;
 	}
 
 	/**
-	 * Remove a cache record
+	 * Remove a cache record by given Id. 
+	 * The record is then deleted from lists for each tag associated with it. 
 	 *
 	 * @param  string $id Cache id
 	 * @return boolean True if no problem
@@ -156,19 +152,15 @@ class Rtcache_Backend {
 	public function remove($id) {
 		// Get list of tags for this id
 		$tags = explode(',', $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_TAGS));
-
-//		$this->_redis->pipeline()->multi();
+		// Start transaction
 		$this->_redis->multi();
-
 		// Remove data
 		$this->_redis->del(self::PREFIX_KEY_IDS . $id);
-
-
 		// Update the id list for each tag
 		foreach ($tags as $tag) {
 			$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $id);
 		}
-
+		// Execute all comand and end transaction
 		$result = $this->_redis->exec();
 
 		return (bool) $result[0];
@@ -180,38 +172,34 @@ class Rtcache_Backend {
 	 * @param array $tags
 	 */
 	protected function _removeByMatchingTags($tags) {
+		//The list of records that have all of the tags specified.
 		$ids = $this->getIdsMatchingTags($tags);
 		if ($ids) {
-//			$this->_redis->pipeline()->multi();
-			$this->_redis->multi();
-
 			// Remove data
 			$this->_redis->del($this->_preprocessIds($ids));
-
-			$this->_redis->exec();
 		}
 	}
 
 	/**
+	 * Remove cache records by any given tags.
+	 * applying - ????
+	 * 
 	 * @param array $tags
 	 */
 	protected function _removeByMatchingAnyTags($tags) {
+		// List of records with at least one of the specified tag.
 		$ids = $this->getIdsMatchingAnyTags($tags);
-
-//		$this->_redis->pipeline()->multi();
+		// Start transaction
 		$this->_redis->multi();
-
 		if ($ids) {
 			// Remove data
 			$this->_redis->del($this->_preprocessIds($ids));
 		}
-
 		// Remove tag id lists
 		$this->_redis->del($this->_preprocessTagIds($tags));
-
 		// Remove tags from list of tags
 		$this->_redis->sRem(self::SET_TAGS, $tags);
-
+		// Execute all comand and end transaction
 		$this->_redis->exec();
 	}
 
@@ -235,8 +223,7 @@ class Rtcache_Backend {
 					}
 					if ($exists[$id]) {
 						$numNotExpired++;
-					}
-					else {
+					} else {
 						$numExpired++;
 						$expired[] = $id;
 
@@ -268,10 +255,12 @@ class Rtcache_Backend {
 	 * Clean some cache records
 	 *
 	 * Available modes are :
-	 * 'all'   => remove all cache entries ($tags is not used)
+	 * 'all'   => remove all cache entries in current Db($tags is not used)
 	 * 'old'   => runs _collectGarbage()
-	 * 'matchingTag'(default)    => clears the entries in cache which contains all of the given tag in the set of tags
-	 * 'matchingAnyTag' => clears the cache entry, for which at least one of the set of tags is present in a set of tags
+	 * 'matchingTag'(default)    => clears the entries in cache which contains
+	 * 							 all of the given tag in the set of tags
+	 * 'matchingAnyTag' => clears the cache entry, for which at least one 
+	 * 						of the set of tags is present in a set of tags
 	 *
 	 * @param  string $mode Clean mode
 	 * @param  array  $tags Array of tags
@@ -279,10 +268,6 @@ class Rtcache_Backend {
 	 * @return boolean True if no problem
 	 */
 	public function clean($mode = self::CLEANING_MODE_MATCHING_TAG, $tags = array()) {
-		if ($tags && !is_array($tags)) {
-			$tags = array($tags);
-		}
-
 		if ($mode == self::CLEANING_MODE_ALL) {
 			return $this->_redis->flushDb();
 		}
@@ -290,6 +275,10 @@ class Rtcache_Backend {
 		if ($mode == self::CLEANING_MODE_OLD) {
 			$this->_collectGarbage();
 			return TRUE;
+		}
+
+		if ($tags && !is_array($tags)) {
+			$tags = array($tags);
 		}
 
 		if (!count($tags)) {
@@ -312,10 +301,10 @@ class Rtcache_Backend {
 	}
 
 	/**
-	 * Get the life time
+	 * Get the life time of cache ids
 	 *
 	 * if $specificLifetime is not false, the given specific life time is used
-	 * else, the global lifetime is used
+	 * else the global lifetime is used
 	 *
 	 * @param  int $specificLifetime
 	 * @return int Cache life time
@@ -326,8 +315,7 @@ class Rtcache_Backend {
 
 	/**
 	 * Return an array of stored cache ids which match given tags
-	 *
-	 * In case of multiple tags, a logical AND is made between tags
+	 * (logical AND  between tags)
 	 *
 	 * @param array $tags array of tags
 	 * @return array array of matching cache ids (string)
@@ -341,8 +329,7 @@ class Rtcache_Backend {
 
 	/**
 	 * Return an array of stored cache ids which match any given tags
-	 *
-	 * In case of multiple tags, a logical OR is made between tags
+	 * (logical OR between tags)
 	 *
 	 * @param array $tags array of tags
 	 * @return array array of any matching cache ids (string)

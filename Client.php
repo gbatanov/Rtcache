@@ -11,12 +11,6 @@ if (!defined('CRLF'))
 
 class Rtcache_Client {
 
-	const TYPE_STRING = 'string';
-	const TYPE_LIST = 'list';
-	const TYPE_SET = 'set';
-	const TYPE_ZSET = 'zset';
-	const TYPE_HASH = 'hash';
-	const TYPE_NONE = 'none';
 	const FREAD_BLOCK_SIZE = 8192;
 
 	/**
@@ -24,39 +18,47 @@ class Rtcache_Client {
 	 * @var resource|Redis
 	 */
 	protected $redis;
+
 	/**
 	 * Host of the Redis server
 	 * @var string
 	 */
 	protected $host;
+
 	/**
 	 * Port on which the Redis server is running
 	 * @var integer
 	 */
 	protected $port;
+
 	/**
 	 * Timeout for connecting to Redis server
 	 * @var float
 	 */
 	protected $timeout;
+
 	/**
 	 * Timeout for reading response from Redis server
 	 * @var float
 	 */
 	protected $readTimeout;
+
 	/**
 	 * Unique identifier for persistent connections
 	 * @var string
 	 */
 	protected $persistent;
+
 	/**
 	 * @var bool
 	 */
 	protected $closeOnDestruct = TRUE;
+
 	/**
 	 * @var bool
 	 */
 	protected $connected = FALSE;
+
 	/**
 	 * @var bool
 	 */
@@ -65,48 +67,41 @@ class Rtcache_Client {
 	 * @var int
 	 */
 	protected $maxConnectRetries = 0;
+
 	/**
 	 * @var int
 	 */
 	protected $connectFailures = 0;
+
 	/**
 	 * @var array
 	 */
 	protected $commandNames;
+
 	/**
 	 * @var string
 	 */
 	protected $commands;
-	/**
-	 * @var bool
-	 */
-//	protected $usePipeline = FALSE;
-	protected $useMulti = FALSE;
+
 	/**
 	 * @var bool
 	 */
 	protected $isMulti = FALSE;
-	/**
-	 * @var bool
-	 */
-	protected $isWatching = FALSE;
+
 	/**
 	 * @var string
 	 */
 	protected $authPassword;
+
 	/**
 	 * @var int
 	 */
 	protected $selectedDb = 0;
-	/**
-	 * Aliases for backwards compatibility with phpredis
-	 * @var array
-	 */
-	protected $aliasedMethods = array('delete' => 'del', 'getkeys' => 'keys', 'sremove' => 'srem');
+
 
 	/**
 	 * Creates a Redisent connection to the Redis server on host {@link $host} and port {@link $port}.
-	 * $host may also be a path to a unix socket or a string in the form of tcp://[hostname]:[port] or unix://[path]
+	 * string in the form of tcp://[hostname]:[port] 
 	 *
 	 * @param string $host The hostname of the Redis server
 	 * @param integer $port The port number of the Redis server
@@ -145,8 +140,8 @@ class Rtcache_Client {
 	}
 
 	/**
-	 * @throws CredisException
-	 * @return Credis_Client
+	 * @throws Rtcache_Exception
+	 * @return Rtcache_Client
 	 */
 	public function connect() {
 		if ($this->connected) {
@@ -154,33 +149,10 @@ class Rtcache_Client {
 		}
 		$errno = false;
 		$errstr = false;
-		if (preg_match('#^(tcp|unix)://(.*)$#', $this->host, $matches)) {
-			if ($matches[1] == 'tcp') {
-				if (!preg_match('#^(.*)(?::(\d+))?(?:/(.*))?$#', $matches[2], $matches)) {
-					throw new CredisException('Invalid host format; expected tcp://host[:port][/persistent]');
-				}
-				$this->host = $matches[1];
-				$this->port = (int) (isset($matches[2]) ? $matches[2] : 6379);
-				$this->persistent = isset($matches[3]) ? $matches[3] : '';
-			}
-			else {
-				$this->host = $matches[2];
-				$this->port = NULL;
-				if (substr($this->host, 0, 1) != '/') {
-					throw new CredisException('Invalid unix socket format; expected unix:///path/to/redis.sock');
-				}
-			}
-		}
-		if ($this->port !== NULL && substr($this->host, 0, 1) == '/') {
-			$this->port = NULL;
-		}
-
+	
 		$flags = STREAM_CLIENT_CONNECT;
-		$remote_socket = $this->port === NULL ? 'unix://' . $this->host : 'tcp://' . $this->host . ':' . $this->port;
+		$remote_socket =  'tcp://' . $this->host . ':' . $this->port;
 		if ($this->persistent) {
-			if ($this->port === NULL) { // Unix socket
-				throw new CredisException('Persistent connections to UNIX sockets are not supported in standalone mode.');
-			}
 			$remote_socket .= '/' . $this->persistent;
 			$flags = $flags | STREAM_CLIENT_PERSISTENT;
 		}
@@ -195,7 +167,7 @@ class Rtcache_Client {
 			}
 			$failures = $this->connectFailures;
 			$this->connectFailures = 0;
-			throw new CredisException("Connection to Redis failed after $failures failures.");
+			throw new Rtcache_Exception("Connection to Redis failed after $failures failures.");
 		}
 
 		$this->connectFailures = 0;
@@ -213,12 +185,12 @@ class Rtcache_Client {
 	 * Set the read timeout for the connection. If falsey, a timeout will not be set. Negative values not supported.
 	 *
 	 * @param $timeout
-	 * @throws CredisException
-	 * @return Credis_Client
+	 * @throws Rtcache_Exception
+	 * @return Rtcache_Client
 	 */
 	public function setReadTimeout($timeout) {
 		if ($timeout < 0) {
-			throw new CredisException('Negative read timeout values are not supported.');
+			throw new Rtcache_Exception('Negative read timeout values are not supported.');
 		}
 		$this->readTimeout = $timeout;
 		if ($this->connected) {
@@ -238,8 +210,7 @@ class Rtcache_Client {
 			try {
 				$result = fclose($this->redis);
 				$this->connected = FALSE;
-			}
-			catch (Exception $e) {
+			} catch (Exception $e) {
 				$result = false; // Ignore exceptions on close
 			}
 		}
@@ -295,12 +266,10 @@ class Rtcache_Client {
 						$argsFlat[] = $key;
 						$argsFlat[] = $value;
 					}
-				}
-				else {
+				} else {
 					$argsFlat = array_merge($argsFlat, $arg);
 				}
-			}
-			else if ($argsFlat !== NULL) {
+			} else if ($argsFlat !== NULL) {
 				$argsFlat[] = $arg;
 			}
 		}
@@ -331,9 +300,8 @@ class Rtcache_Client {
 				$response = array_pop($response);
 				$this->isMulti = FALSE;
 				return $response;
-			}
-			else {
-				array_unshift($args, $name);
+			} else {
+				array_unshift($args, $name); // name will be the first argument
 				$this->commandNames[] = $name;
 				$this->commands .= self::_prepare_command($args);
 				return $this;
@@ -348,7 +316,7 @@ class Rtcache_Client {
 		}
 
 		// standard mode
-		array_unshift($args, $name);
+		array_unshift($args, $name); // name will be the first argument
 		$command = self::_prepare_command($args);
 		$this->write_command($command);
 		$response = $this->readReply();
@@ -406,10 +374,9 @@ class Rtcache_Client {
 		$replyType = substr($reply, 0, 1);
 		switch ($replyType) {
 			case '-': //Negative reply
-				if ($this->isMulti || $this->usePipeline) {
+				if ($this->isMulti ) {
 					$response = FALSE;
-				}
-				else {
+				} else {
 					throw new Rtcache_Exception(substr($reply, 4));
 				}
 				break;
@@ -453,7 +420,7 @@ class Rtcache_Client {
 	}
 
 	/**
-	 * Build the Redis unified protocol command
+	 * Build the Redis unified protocol command <http://redis.io/commands>
 	 *
 	 * @param array $args
 	 * @return string
