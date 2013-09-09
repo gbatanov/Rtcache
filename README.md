@@ -6,9 +6,10 @@ Redis tagged cache engine
 Folder structure:
 ----------------------
 	
-	|-rtcache
+	|-Rtcache
 		|-Backend.php
 		|-Slot.php
+		|-Client.php 
 	|-demo 
 		|-ClearCache.php
 		|-User.php
@@ -17,22 +18,10 @@ Folder structure:
 		|-InfoSlot.php
 		|-autoload.php
 		|-index.php
-	|-vendor
-		|-colinmollenhour
-			|-credis
-				|-Client.php 
-				|-other files
 
-After downloading run in command line:
-
-	>cd path/to/Rtcache
-
-	>php composer.phar install
-
-
-Rtcache_Client is using [Credis](https://github.com/colinmollenhour/credis).
  
 Rtcache_CacheBackend based on code and ideas:
+ - [Credis](https://github.com/colinmollenhour/credis)
  - [Cm_Cache_Backend_Redis](https://github.com/colinmollenhour/Cm_Cache_Backend_Redis)
  - [Zend_Cache](http://framework.zend.com/manual/1.8/en/zend.cache.html)
  - [Dklab](http://dklab.ru/lib/Dklab_Cache/)

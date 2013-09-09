@@ -9,7 +9,7 @@
  */
 class UserSlot extends Rtcache_Slot {
 
-	protected $lifetime = 3600;
+	protected $lifetime = 60;
 	private $_userId = 0;
 
 	public function __construct(User $user, $params = array()) {

@@ -11,13 +11,13 @@
 		}
 	],
 	"require": {
-		"colinmollenhour/credis": "1.2"
 	},
 	"autoload": {
-		"classmap": [ 
-			"Backend.php", 
+		"classmap": [
+			"Backend.php",
 			"Slot.php",
-			]
+			"Client.php"
+		]
 	},
 	"minimum-stability": "dev"
 }

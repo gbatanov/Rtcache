@@ -9,21 +9,18 @@
 abstract class Rtcache_Slot {
 
 	protected $backend = null;
-
 	/**
 	 * Tags attached to this slot.
 	 * 
 	 * @var array of tags
 	 */
 	protected $_tags;
-
 	/**
 	 * ID associated to this slot.
 	 * 
 	 * @var string
 	 */
 	private $_id = null;
-
 	/**
 	 * Lifetime of this slot. Default 1 hour.
 	 * @var int
@@ -48,6 +45,8 @@ abstract class Rtcache_Slot {
 	 */
 	public function load() {
 		$raw = $this->_getBackend()->load($this->_id);
+		if ($raw === false)
+			return FALSE;
 		return unserialize($raw);
 	}
 
@@ -82,6 +81,6 @@ abstract class Rtcache_Slot {
 
 }
 
-class Rtcache_SlotException extends Exception{
+class Rtcache_SlotException extends Exception {
 	
 }

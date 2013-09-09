@@ -7,51 +7,27 @@
  * @package Rtcache
  */
 class Rtcache_Backend {
+//modes
 
 	const CLEANING_MODE_ALL = 'all';
 	const CLEANING_MODE_OLD = 'old';
 	const CLEANING_MODE_MATCHING_TAG = 'matchingTag';
 	const CLEANING_MODE_MATCHING_ANY_TAG = 'matchingAnyTag';
-	const SET_IDS = 'rtc:ids';
-	const SET_TAGS = 'rtc:tags';
-	const PREFIX_KEY = 'rtc:k:';
-	const PREFIX_TAG_IDS = 'rtc:ti:';
-	const FIELD_DATA = 'd';
-	const FIELD_MTIME = 'm';
-	const FIELD_TAGS = 't';
-	const FIELD_INF = 'i';
-	const MAX_LIFETIME = 2592000; /* Redis backend limit */
-	const COMPRESS_PREFIX = ":\x1f\x8b";
+	// set all tags, need for garbadge clearing
+	const SET_TAGS = 'rtc_tags';
+	// prefixes
+	const PREFIX_KEY_IDS = 'rtc_ki:';
+	const PREFIX_TAG_IDS = 'rtc_ti:';
+	// fields
+	const FIELD_DATA = 'rtc_d';
+	const FIELD_TAGS = 'rtc_t';
+	// lifetime limit, default 1 month
+	const MAX_LIFETIME = 2592000;
 	const DEFAULT_CONNECT_TIMEOUT = 2.5;
 	const DEFAULT_CONNECT_RETRIES = 1;
 
-	protected $_directives = array(
-		'lifetime' => 3600,
-		'logging' => false,
-		'logger' => null
-	);
-
-	/**
-	 * Available options
-	 *
-	 * @var array available options
-	 */
-	protected $_options = array();
-
 	/** @var Credis_Client */
 	protected $_redis;
-
-	/** @var int */
-	protected $_compressTags = 0;
-
-	/** @var int */
-	protected $_compressData = 0;
-
-	/** @var int */
-	protected $_compressThreshold = 20480;
-
-	/** @var string */
-	protected $_compressionLib;
 
 	/**
 	 * Contruct Rtcache_Backend backend
@@ -70,11 +46,8 @@ class Rtcache_Backend {
 
 		$timeout = isset($options['timeout']) ? $options['timeout'] : self::DEFAULT_CONNECT_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-		$this->_redis = new Credis_Client($options['server'], $options['port'], $timeout, $persistent);
+		$this->_redis = new Rtcache_Client($options['server'], $options['port'], $timeout, $persistent);
 
-		if (isset($options['force_standalone']) && $options['force_standalone']) {
-			$this->_redis->forceStandalone();
-		}
 
 		$connectRetries = isset($options['connect_retries']) ? (int) $options['connect_retries'] : self::DEFAULT_CONNECT_RETRIES;
 		$this->_redis->setMaxConnectRetries($connectRetries);
@@ -94,38 +67,9 @@ class Rtcache_Backend {
 		$this->_redis->select((int) $options['database']) or self::throwException('The redis database could not be selected.');
 
 
-		if (isset($options['compress_tags'])) {
-			$this->_compressTags = (int) $options['compress_tags'];
-		}
-
-		if (isset($options['compress_data'])) {
-			$this->_compressData = (int) $options['compress_data'];
-		}
-
 		if (isset($options['lifetimelimit'])) {
 			$this->_lifetimelimit = (int) min($options['lifetimelimit'], self::MAX_LIFETIME);
 		}
-
-		if (isset($options['compress_threshold'])) {
-			$this->_compressThreshold = (int) $options['compress_threshold'];
-		}
-
-		if (isset($options['automatic_cleaning_factor'])) {
-			$this->_options['automatic_cleaning_factor'] = (int) $options['automatic_cleaning_factor'];
-		} else {
-			$this->_options['automatic_cleaning_factor'] = 0;
-		}
-
-		if (isset($options['compression_lib'])) {
-			$this->_compressionLib = $options['compression_lib'];
-		} else if (function_exists('snappy_compress')) {
-			$this->_compressionLib = 'snappy';
-		} else if (function_exists('lzf_compress')) {
-			$this->_compressionLib = 'lzf';
-		} else {
-			$this->_compressionLib = 'gzip';
-		}
-		$this->_compressPrefix = substr($this->_compressionLib, 0, 2) . self::COMPRESS_PREFIX;
 	}
 
 	/**
@@ -135,11 +79,11 @@ class Rtcache_Backend {
 	 * @return bool|string
 	 */
 	public function load($id) {
-		$data = $this->_redis->hGet(self::PREFIX_KEY . $id, self::FIELD_DATA);
+		$data = $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_DATA);
 		if ($data === NULL) {
 			return FALSE;
 		}
-		return $this->_decodeData($data);
+		return $data;
 	}
 
 	/**
@@ -151,7 +95,7 @@ class Rtcache_Backend {
 	 * @param  string $data             Datas to cache
 	 * @param  string $id               Cache id
 	 * @param  array  $tags             Array of strings, the cache record will be tagged by each string entry
-	 * @param  bool|int $specificLifetime If != false, set a specific lifetime for this cache record (null => infinite lifetime)
+	 * @param  bool|int $specificLifetime If != false, set a specific lifetime for this cache record else MAX_LIFITIME
 	 * @throws CredisException
 	 * @return boolean True if no problem
 	 */
@@ -162,31 +106,29 @@ class Rtcache_Backend {
 		$lifetime = $this->getLifetime($specificLifetime);
 
 		// Get list of tags previously assigned
-		$oldTags = $this->_decodeData($this->_redis->hGet(self::PREFIX_KEY . $id, self::FIELD_TAGS));
+		$oldTags = $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_TAGS);
 		$oldTags = $oldTags ? explode(',', $oldTags) : array();
 
-		$this->_redis->pipeline()->multi();
+//		$this->_redis->pipeline()->multi();
+		$this->_redis->multi();
 
 		// Set the data
-		$result = $this->_redis->hMSet(self::PREFIX_KEY . $id, array(
-			self::FIELD_DATA => $this->_encodeData($data, $this->_compressData),
-			self::FIELD_TAGS => $this->_encodeData(implode(',', $tags), $this->_compressTags),
-			self::FIELD_MTIME => time(),
-			self::FIELD_INF => $lifetime ? 0 : 1,
+		$result = $this->_redis->hMSet(self::PREFIX_KEY_IDS . $id, array(
+			self::FIELD_DATA => $data,
+			self::FIELD_TAGS => implode(',', $tags),
 		));
 		if (!$result) {
-			throw new CredisException("Could not set cache key $id");
+			throw new Rtcache_Exception("Could not set cache key $id");
 		}
 
 		// Always expire so the volatile-* eviction policies may be safely used, otherwise
 		// there is a risk that tag data could be evicted.
-		$this->_redis->expire(self::PREFIX_KEY . $id, $lifetime ? $lifetime : $this->_lifetimelimit);
+		$this->_redis->expire(self::PREFIX_KEY_IDS . $id, $lifetime);
 
 		// Process added tags
 		if ($addTags = ($oldTags ? array_diff($tags, $oldTags) : $tags)) {
 			// Update the list with all the tags
 			$this->_redis->sAdd(self::SET_TAGS, $addTags);
-
 			// Update the id list for each tag
 			foreach ($addTags as $tag) {
 				$this->_redis->sAdd(self::PREFIX_TAG_IDS . $tag, $id);
@@ -200,8 +142,6 @@ class Rtcache_Backend {
 				$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $id);
 			}
 		}
-
-
 		$this->_redis->exec();
 
 		return TRUE;
@@ -215,12 +155,13 @@ class Rtcache_Backend {
 	 */
 	public function remove($id) {
 		// Get list of tags for this id
-		$tags = explode(',', $this->_decodeData($this->_redis->hGet(self::PREFIX_KEY . $id, self::FIELD_TAGS)));
+		$tags = explode(',', $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_TAGS));
 
-		$this->_redis->pipeline()->multi();
+//		$this->_redis->pipeline()->multi();
+		$this->_redis->multi();
 
 		// Remove data
-		$this->_redis->del(self::PREFIX_KEY . $id);
+		$this->_redis->del(self::PREFIX_KEY_IDS . $id);
 
 
 		// Update the id list for each tag
@@ -234,12 +175,15 @@ class Rtcache_Backend {
 	}
 
 	/**
+	 * Remove cache records by all given tags
+	 * 
 	 * @param array $tags
 	 */
 	protected function _removeByMatchingTags($tags) {
 		$ids = $this->getIdsMatchingTags($tags);
 		if ($ids) {
-			$this->_redis->pipeline()->multi();
+//			$this->_redis->pipeline()->multi();
+			$this->_redis->multi();
 
 			// Remove data
 			$this->_redis->del($this->_preprocessIds($ids));
@@ -254,7 +198,8 @@ class Rtcache_Backend {
 	protected function _removeByMatchingAnyTags($tags) {
 		$ids = $this->getIdsMatchingAnyTags($tags);
 
-		$this->_redis->pipeline()->multi();
+//		$this->_redis->pipeline()->multi();
+		$this->_redis->multi();
 
 		if ($ids) {
 			// Remove data
@@ -286,11 +231,12 @@ class Rtcache_Backend {
 			if ($numTagMembers) {
 				while ($id = array_pop($tagMembers)) {
 					if (!isset($exists[$id])) {
-						$exists[$id] = $this->_redis->exists(self::PREFIX_KEY . $id);
+						$exists[$id] = $this->_redis->exists(self::PREFIX_KEY_IDS . $id);
 					}
 					if ($exists[$id]) {
 						$numNotExpired++;
-					} else {
+					}
+					else {
 						$numExpired++;
 						$expired[] = $id;
 
@@ -325,7 +271,6 @@ class Rtcache_Backend {
 	 * 'all'   => remove all cache entries ($tags is not used)
 	 * 'old'   => runs _collectGarbage()
 	 * 'matchingTag'(default)    => clears the entries in cache which contains all of the given tag in the set of tags
-	 * 'notMatchingTag' => clears the cache entries for which no tag all specified in a set of tags
 	 * 'matchingAnyTag' => clears the cache entry, for which at least one of the set of tags is present in a set of tags
 	 *
 	 * @param  string $mode Clean mode
@@ -355,39 +300,15 @@ class Rtcache_Backend {
 
 		switch ($mode) {
 			case self::CLEANING_MODE_MATCHING_TAG:
-
 				$this->_removeByMatchingTags($tags);
 				break;
-
-
 			case self::CLEANING_MODE_MATCHING_ANY_TAG:
-
 				$this->_removeByMatchingAnyTags($tags);
 				break;
-
 			default:
 				self::throwException('Invalid mode for clean() method: ' . $mode);
 		}
 		return (bool) $result;
-	}
-
-	/**
-	 * Set an option
-	 *
-	 * @param  string $name
-	 * @param  mixed  $value
-	 * @throws Rtcache_Exception
-	 * @return void
-	 */
-	public function setOption($name, $value) {
-		if (!is_string($name)) {
-			self::throwException("Incorrect option name : $name");
-		}
-		$name = strtolower($name);
-		if (!array_key_exists($name, $this->_options)) {
-			self::throwException("Incorrect option name : $name");
-		}
-		$this->_options[$name] = $value;
 	}
 
 	/**
@@ -400,60 +321,7 @@ class Rtcache_Backend {
 	 * @return int Cache life time
 	 */
 	public function getLifetime($specificLifetime) {
-		if ($specificLifetime === false) {
-			return $this->_directives['lifetime'];
-		}
-		return $specificLifetime;
-	}
-
-	/**
-	 * Set the frontend directives
-	 *
-	 * @param  array $directives Assoc of directives
-	 * @throws Rtcache_Cache_Exception
-	 * @return void
-	 */
-	public function setDirectives($directives) {
-		if (!is_array($directives))
-			self::throwException('Directives parameter must be an array');
-		while (list($name, $value) = each($directives)) {
-			if (!is_string($name)) {
-				self::throwException("Incorrect option name : $name");
-			}
-			$name = strtolower($name);
-			if (array_key_exists($name, $this->_directives)) {
-				$this->_directives[$name] = $value;
-			}
-		}
-
-		$lifetime = $this->getLifetime(false);
-		if ($lifetime > self::MAX_LIFETIME) {
-			self::throwException('Redis backend has a limit of 30 days (2592000 seconds) for the lifetime');
-		}
-	}
-
-	/**
-	 * Return an array of stored cache ids
-	 *
-	 * @return array array of stored cache ids (string)
-	 */
-	public function getIds() {
-
-		$keys = $this->_redis->keys(self::PREFIX_KEY . '*');
-		$prefixLen = strlen(self::PREFIX_KEY);
-		foreach ($keys as $index => $key) {
-			$keys[$index] = substr($key, $prefixLen);
-		}
-		return $keys;
-	}
-
-	/**
-	 * Return an array of stored tags
-	 *
-	 * @return array array of stored tags (string)
-	 */
-	public function getTags() {
-		return (array) $this->_redis->sMembers(self::SET_TAGS);
+		return (int) $specificLifetime > 0 ? (int) $specificLifetime : self::MAX_LIFETIME;
 	}
 
 	/**
@@ -487,112 +355,6 @@ class Rtcache_Backend {
 	}
 
 	/**
-	 * Return an array of metadatas for the given cache id
-	 *
-	 * The array must include these keys :
-	 * - expire : the expire timestamp
-	 * - tags : a string array of tags
-	 * - mtime : timestamp of last modification time
-	 *
-	 * @param string $id cache id
-	 * @return array array of metadatas (false if the cache id is not found)
-	 */
-	public function getMetadatas($id) {
-		list($tags, $mtime, $inf) = $this->_redis->hMGet(self::PREFIX_KEY . $id, array(self::FIELD_TAGS, self::FIELD_MTIME, self::FIELD_INF));
-		if (!$mtime) {
-			return FALSE;
-		}
-		$tags = explode(',', $this->_decodeData($tags));
-		$expire = $inf === '1' ? FALSE : time() + $this->_redis->ttl(self::PREFIX_KEY . $id);
-
-		return array(
-			'expire' => $expire,
-			'tags' => $tags,
-			'mtime' => $mtime,
-		);
-	}
-
-	/**
-	 * Give (if possible) an extra lifetime to the given cache id
-	 *
-	 * @param string $id cache id
-	 * @param int $extraLifetime
-	 * @return boolean true if ok
-	 */
-	public function touch($id, $extraLifetime) {
-		list($inf) = $this->_redis->hGet(self::PREFIX_KEY . $id, self::FIELD_INF);
-		if ($inf === '0') {
-			$expireAt = time() + $this->_redis->ttl(self::PREFIX_KEY . $id) + $extraLifetime;
-			return (bool) $this->_redis->expireAt(self::PREFIX_KEY . $id, $expireAt);
-		}
-		return false;
-	}
-
-	/**
-	 * Return an associative array of capabilities (booleans) of the backend
-	 *
-	 * The array must include these keys :
-	 * - automatic_cleaning (is automating cleaning necessary)
-	 * - tags (are tags supported)
-	 * - expired_read (is it possible to read expired cache records
-	 *                 (for doNotTestCacheValidity option for example))
-	 * - priority does the backend deal with priority when saving
-	 * - infinite_lifetime (is infinite lifetime can work with this backend)
-	 * - get_list (is it possible to get the list of cache ids and the complete list of tags)
-	 *
-	 * @return array associative of with capabilities
-	 */
-	public function getCapabilities() {
-		return array(
-			'automatic_cleaning' => ($this->_options['automatic_cleaning_factor'] > 0),
-			'tags' => true,
-			'expired_read' => false,
-			'priority' => false,
-			'infinite_lifetime' => true,
-			'get_list' => true,
-		);
-	}
-
-	/**
-	 * @param string $data
-	 * @param int $level
-	 * @throws CredisException
-	 * @return string
-	 */
-	protected function _encodeData($data, $level) {
-		if ($level && strlen($data) >= $this->_compressThreshold) {
-			switch ($this->_compressionLib) {
-				case 'snappy': $data = snappy_compress($data);
-					break;
-				case 'lzf': $data = lzf_compress($data);
-					break;
-				case 'gzip': $data = gzcompress($data, $level);
-					break;
-			}
-			if (!$data) {
-				throw new CredisException("Could not compress cache data.");
-			}
-			return $this->_compressPrefix . $data;
-		}
-		return $data;
-	}
-
-	/**
-	 * @param bool|string $data
-	 * @return string
-	 */
-	protected function _decodeData($data) {
-		if (substr($data, 2, 3) == self::COMPRESS_PREFIX) {
-			switch (substr($data, 0, 2)) {
-				case 'sn': return snappy_uncompress(substr($data, 5));
-				case 'lz': return lzf_decompress(substr($data, 5));
-				case 'gz': case 'zc': return gzuncompress(substr($data, 5));
-			}
-		}
-		return $data;
-	}
-
-	/**
 	 * @param $item
 	 * @param $index
 	 * @param $prefix
@@ -606,7 +368,7 @@ class Rtcache_Backend {
 	 * @return array
 	 */
 	protected function _preprocessIds($ids) {
-		array_walk($ids, array($this, '_preprocess'), self::PREFIX_KEY);
+		array_walk($ids, array($this, '_preprocess'), self::PREFIX_KEY_IDS);
 		return $ids;
 	}
 
@@ -617,16 +379,6 @@ class Rtcache_Backend {
 	protected function _preprocessTagIds($tags) {
 		array_walk($tags, array($this, '_preprocess'), self::PREFIX_TAG_IDS);
 		return $tags;
-	}
-
-	/**
-	 * Required to pass unit tests
-	 *
-	 * @param  string $id
-	 * @return void
-	 */
-	public function ___expire($id) {
-		$this->_redis->del(self::PREFIX_KEY . $id);
 	}
 
 	public static function throwException($msg) {

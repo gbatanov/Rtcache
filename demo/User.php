@@ -4,7 +4,7 @@
  * Static demo class User
  *
  * @author gbatanov
- * @version v.0.3
+ * @version v.0.4
  * @package rtcache.demo
  */
 class User {
@@ -52,11 +52,13 @@ class User {
 	 */
 	public function addParamsWithAutoCleaning($params) {
 		$this->_params[] = $params;
-		ClearCache::clearTags((array) 'user_' . $this->Id);
+		ClearCache::clearTags('user_' . $this->Id);
 	}
 
 	public function getParams() {
-		$slot = new UserSlot($this);
+		$args = array();
+		$args['funcName'] = __METHOD__;
+		$slot = new UserSlot($this, $args);
 		$data = $slot->load();
 		if ($data === false) {
 			$data = $this->getUserParams();
@@ -70,7 +72,7 @@ class User {
 	 */
 	public function resetParams() {
 		$this->_params = array();
-		ClearCache::clearTags((array) 'user_' . $this->Id);
+		ClearCache::clearTags('user_' . $this->Id);
 	}
 
 }
