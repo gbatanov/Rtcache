@@ -14,7 +14,7 @@ abstract class Rtcache_Slot {
 	 * 
 	 * @var array of tags
 	 */
-	protected $_tags;
+	protected $_tags=array();
 	/**
 	 * ID associated to this slot.
 	 * 

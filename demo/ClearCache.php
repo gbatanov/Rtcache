@@ -4,7 +4,7 @@
  * Class cleaning cache by tags
  *
  * @author gbatanov
- * @version v.0.3
+ * @version v.0.4
  * @package rtcache.demo
  */
 class ClearCache {

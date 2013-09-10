@@ -4,12 +4,12 @@
  * Working UserSlot class
  *
  * @author gbatanov
- * @version v.0.3
+ * @version v.0.4
  * @package rtcache.demo
  */
 class UserSlot extends Rtcache_Slot {
 
-	protected $lifetime = 60;
+	protected $lifetime = 60; // for demo lifetime = 1minute
 	private $_userId = 0;
 
 	public function __construct(User $user, $params = array()) {

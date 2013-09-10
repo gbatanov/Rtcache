@@ -1,7 +1,7 @@
 {
 	"name": "gbatanov/Rtcache",
 	"description": "Redis tagged cache",
-	"version": "0.3.0.0",
+	"version": "0.4.0.0",
 	"license": "Apache-2.0",
 	"type": "library",
 	"authors": [
@@ -10,14 +10,4 @@
 			"email": "gsb@gsbmail.ru"
 		}
 	],
-	"require": {
-	},
-	"autoload": {
-		"classmap": [
-			"Backend.php",
-			"Slot.php",
-			"Client.php"
-		]
-	},
-	"minimum-stability": "dev"
 }

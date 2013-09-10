@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Redis adapter 
+ * Redis adapter for data cache 
  *
  * @version v.0.4
  * @package Rtcache
@@ -27,7 +27,7 @@ class Rtcache_Backend {
 	const DEFAULT_CONNECT_RETRIES = 1;
 
 	/** @var Credis_Client */
-	protected $_redis;
+	protected $_redis = null;
 
 	/**
 	 * Contruct Rtcache_Backend backend
@@ -63,6 +63,13 @@ class Rtcache_Backend {
 		// Lifetime cache records by default
 		if (isset($options['lifetimelimit'])) {
 			$this->_lifetimelimit = (int) min($options['lifetimelimit'], self::MAX_LIFETIME);
+		}
+	}
+
+	public function close() {
+		if (isset($this->_redis)) {
+			$this->_redis->close();
+			$this->_redis = null;
 		}
 	}
 
@@ -210,8 +217,8 @@ class Rtcache_Backend {
 		// Clean up expired keys from tag id set and global id set
 		$exists = array();
 		$tags = (array) $this->_redis->sMembers(self::SET_TAGS);
+		// Get list of expired ids for each tag
 		foreach ($tags as $tag) {
-			// Get list of expired ids for each tag
 			$tagMembers = $this->_redis->sMembers(self::PREFIX_TAG_IDS . $tag);
 			$numTagMembers = count($tagMembers);
 			$expired = array();
@@ -223,7 +230,8 @@ class Rtcache_Backend {
 					}
 					if ($exists[$id]) {
 						$numNotExpired++;
-					} else {
+					}
+					else {
 						$numExpired++;
 						$expired[] = $id;
 
@@ -234,9 +242,9 @@ class Rtcache_Backend {
 						}
 					}
 				}
-				if (!count($expired))
-					continue;
 			}
+			if (!count($expired))
+				continue;
 
 			// Remove empty tags or completely expired tags
 			if ($numExpired == $numTagMembers) {
@@ -372,8 +380,4 @@ class Rtcache_Backend {
 		throw new Rtcache_Exception($msg);
 	}
 
-}
-
-class Rtcache_Exception extends Exception {
-	
 }

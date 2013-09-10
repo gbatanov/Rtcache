@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Rtcache_Client (a fork of Credis_Client)
+ * Rtcache_Client (a fork of Credis_Client minimized for data caching only)
  * 
  * @version v.0.4
  * @package rtcache
@@ -9,99 +9,83 @@
 if (!defined('CRLF'))
 	define('CRLF', sprintf('%s%s', chr(13), chr(10)));
 
-class Rtcache_Client {
+class Rtcache_Exception extends Exception {
+	
+}
 
-	const FREAD_BLOCK_SIZE = 8192;
+class Rtcache_Client {
 
 	/**
 	 * Socket connection to the Redis server
-	 * @var resource|Redis
+	 * @var resource
 	 */
-	protected $redis;
-
+	protected $socket;
 	/**
 	 * Host of the Redis server
 	 * @var string
 	 */
-	protected $host;
-
+	protected $host = 'localhost';
 	/**
 	 * Port on which the Redis server is running
 	 * @var integer
 	 */
-	protected $port;
-
+	protected $port = 6379;
 	/**
-	 * Timeout for connecting to Redis server
+	 * Timeout for connecting to Redis server in ms
 	 * @var float
 	 */
-	protected $timeout;
-
+	protected $timeout = 2.5;
 	/**
-	 * Timeout for reading response from Redis server
+	 * Timeout for reading response from Redis server in us
 	 * @var float
 	 */
 	protected $readTimeout;
-
 	/**
 	 * Unique identifier for persistent connections
 	 * @var string
 	 */
 	protected $persistent;
-
 	/**
 	 * @var bool
 	 */
 	protected $closeOnDestruct = TRUE;
-
 	/**
 	 * @var bool
 	 */
 	protected $connected = FALSE;
-
-	/**
-	 * @var bool
-	 */
-//	protected $standalone;
 	/**
 	 * @var int
 	 */
 	protected $maxConnectRetries = 0;
-
 	/**
 	 * @var int
 	 */
 	protected $connectFailures = 0;
-
 	/**
 	 * @var array
 	 */
 	protected $commandNames;
-
 	/**
 	 * @var string
 	 */
 	protected $commands;
-
 	/**
+	 * Transaction mode
 	 * @var bool
 	 */
 	protected $isMulti = FALSE;
-
 	/**
 	 * @var string
 	 */
 	protected $authPassword;
-
 	/**
+	 * Current database
 	 * @var int
 	 */
 	protected $selectedDb = 0;
 
-
 	/**
-	 * Creates a Redisent connection to the Redis server on host {@link $host} and port {@link $port}.
-	 * string in the form of tcp://[hostname]:[port] 
+	 * Setting parameters for connection to Redis Server
 	 *
 	 * @param string $host The hostname of the Redis server
 	 * @param integer $port The port number of the Redis server
@@ -140,6 +124,8 @@ class Rtcache_Client {
 	}
 
 	/**
+	 * Connecting to Redis Server 
+	 * 
 	 * @throws Rtcache_Exception
 	 * @return Rtcache_Client
 	 */
@@ -149,14 +135,14 @@ class Rtcache_Client {
 		}
 		$errno = false;
 		$errstr = false;
-	
+
 		$flags = STREAM_CLIENT_CONNECT;
-		$remote_socket =  'tcp://' . $this->host . ':' . $this->port;
+		$remote_socket = 'tcp://' . $this->host . ':' . $this->port;
 		if ($this->persistent) {
 			$remote_socket .= '/' . $this->persistent;
 			$flags = $flags | STREAM_CLIENT_PERSISTENT;
 		}
-		$result = $this->redis = @stream_socket_client($remote_socket, $errno, $errstr, $this->timeout !== null ? $this->timeout : 2.5, $flags);
+		$result = $this->socket = @stream_socket_client($remote_socket, $errno, $errstr, $this->timeout !== null ? $this->timeout : 2.5, $flags);
 
 
 		// Use recursion for connection retries
@@ -182,7 +168,8 @@ class Rtcache_Client {
 	}
 
 	/**
-	 * Set the read timeout for the connection. If falsey, a timeout will not be set. Negative values not supported.
+	 * Set the read timeout in us for the connection. If falsey, a timeout will not be set.
+	 * Negative values not supported.
 	 *
 	 * @param $timeout
 	 * @throws Rtcache_Exception
@@ -194,7 +181,7 @@ class Rtcache_Client {
 		}
 		$this->readTimeout = $timeout;
 		if ($this->connected) {
-			stream_set_timeout($this->redis, (int) floor($timeout), ($timeout - floor($timeout)) * 1000000);
+			stream_set_timeout($this->socket, (int) floor($timeout), ($timeout - floor($timeout)) * 1000000);
 		}
 		return $this;
 	}
@@ -208,37 +195,13 @@ class Rtcache_Client {
 		$result = TRUE;
 		if ($this->connected && !$this->persistent) {
 			try {
-				$result = fclose($this->redis);
+				$result = fclose($this->socket);
 				$this->connected = FALSE;
 			} catch (Exception $e) {
 				$result = false; // Ignore exceptions on close
 			}
 		}
 		return $result;
-	}
-
-	/**
-	 * Authenification query
-	 * 
-	 * @param string $password
-	 * @return bool
-	 */
-	public function auth($password) {
-		$this->authPassword = $password;
-		$response = $this->__call('auth', array($this->authPassword));
-		return $response;
-	}
-
-	/**
-	 * Select database
-	 * 
-	 * @param int $index
-	 * @return bool
-	 */
-	public function select($index) {
-		$this->selectedDb = (int) $index;
-		$response = $this->__call('select', array($this->selectedDb));
-		return $response;
 	}
 
 	/**
@@ -250,7 +213,9 @@ class Rtcache_Client {
 	 */
 	public function __call($name, $args) {
 
-		$this->connect();
+		if ($this->connected) {
+			$this->connect();
+		}
 
 		$name = strtolower($name);
 
@@ -293,7 +258,7 @@ class Rtcache_Client {
 				// Read response fom server
 				$response = array();
 				foreach ($this->commandNames as $command) {
-					$response[] = $this->readReply();
+					$response[] = $this->_parseReply($this->readReply());
 				}
 				$this->commandNames = NULL;
 
@@ -319,7 +284,7 @@ class Rtcache_Client {
 		array_unshift($args, $name); // name will be the first argument
 		$command = self::_prepare_command($args);
 		$this->write_command($command);
-		$response = $this->readReply();
+		$response = $this->_parseReply($this->readReply());
 
 		return $response;
 	}
@@ -332,7 +297,7 @@ class Rtcache_Client {
 	 */
 	protected function write_command($command) {
 		// Reconnect on lost connection (Redis server "timeout" exceeded since last command)
-		if (feof($this->redis)) {
+		if (feof($this->socket)) {
 			$this->close();
 			// If transaction was in progress and connection was lost, throw error rather than reconnect
 			// since transaction state will be lost.
@@ -352,7 +317,7 @@ class Rtcache_Client {
 
 		$commandLen = strlen($command);
 		for ($written = 0; $written < $commandLen; $written += $fwrite) {
-			$fwrite = fwrite($this->redis, substr($command, $written));
+			$fwrite = fwrite($this->socket, substr($command, $written));
 			if ($fwrite === FALSE) {
 				throw new Rtcache_Exception('Failed to write entire command to stream');
 			}
@@ -362,22 +327,32 @@ class Rtcache_Client {
 	/**
 	 * Read reply from Redis server
 	 * 
-	 * @return mixed
+	 * @return string
 	 * @throws Rtcache_Exception
 	 */
-	protected function readReply() {
-		$reply = fgets($this->redis);
+	private function readReply() {
+		$reply = fgets($this->socket);
 		if ($reply === FALSE) {
 			throw new Rtcache_Exception('Lost connection to Redis server.');
 		}
 		$reply = rtrim($reply, CRLF);
+		return $reply;
+	}
+
+	/**
+	 * Parsing reply from Redis server
+	 * 
+	 * @param string $reply
+	 * @return boolean
+	 * @throws Rtcache_Exception
+	 */
+	private function _parseReply($reply) {
 		$replyType = substr($reply, 0, 1);
 		switch ($replyType) {
 			case '-': //Negative reply
-				if ($this->isMulti ) {
-					$response = FALSE;
-				} else {
-					throw new Rtcache_Exception(substr($reply, 4));
+				$response = preg_replace('/^(\w*)?\s(.*)$/U', '$2', $reply);
+				if (!$this->isMulti) {
+					throw new Rtcache_Exception($response);
 				}
 				break;
 			case '+': // Positive reply
@@ -391,7 +366,7 @@ class Rtcache_Client {
 				if ($reply == '$-1')
 					return FALSE;
 				$size = (int) substr($reply, 1);
-				$response = stream_get_contents($this->redis, $size + 2);
+				$response = stream_get_contents($this->socket, $size + 2);
 				if (!$response)
 					throw new Rtcache_Exception('Error reading reply.');
 				$response = substr($response, 0, $size);
@@ -404,7 +379,7 @@ class Rtcache_Client {
 
 				$response = array();
 				for ($i = 0; $i < $count; $i++) {
-					$response[] = $this->readReply();
+					$response[] = $this->_parseReply($this->readReply());
 				}
 				break;
 
@@ -434,3 +409,4 @@ class Rtcache_Client {
 	}
 
 }
+
