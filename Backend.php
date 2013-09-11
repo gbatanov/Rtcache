@@ -7,7 +7,6 @@
  * @package Rtcache
  */
 class Rtcache_Backend {
-//modes
 
 	const CLEANING_MODE_ALL = 'all';
 	const CLEANING_MODE_OLD = 'old';
@@ -25,8 +24,10 @@ class Rtcache_Backend {
 	const MAX_LIFETIME = 2592000;
 	const DEFAULT_CONNECT_TIMEOUT = 2.5;
 	const DEFAULT_CONNECT_RETRIES = 1;
+	const DEFAULT_READ_TIMEOUT = 3000000; // 3 sec
 
 	/** @var Credis_Client */
+
 	protected $_redis = null;
 
 	/**
@@ -39,15 +40,13 @@ class Rtcache_Backend {
 		$server = isset($options['server']) ? $options['server'] : 'localhost';
 		$port = isset($options['port']) ? $options['port'] : 6379;
 		$timeout = isset($options['timeout']) ? $options['timeout'] : self::DEFAULT_CONNECT_TIMEOUT;
+		$read_timeout = isset($options['read_timeout']) ? (float) $options['read_timeout'] : self::DEFAULT_READ_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-		$this->_redis = new Rtcache_Client($server, $port, $timeout, $persistent);
-
 		$connectRetries = isset($options['connect_retries']) ? (int) $options['connect_retries'] : self::DEFAULT_CONNECT_RETRIES;
-		$this->_redis->setMaxConnectRetries($connectRetries);
 
-		if (!empty($options['read_timeout']) && (float) $options['read_timeout'] > 0) {
-			$this->_redis->setReadTimeout((float) $options['read_timeout']);
-		}
+		$this->_redis = new Rtcache_Client($server, $port, $timeout, $persistent);
+		$this->_redis->setMaxConnectRetries($connectRetries);
+		$this->_redis->setReadTimeout($read_timeout);
 
 		if (!empty($options['password'])) {
 			$this->_redis->auth($options['password']) or self::throwException('Unable to authenticate with the redis server.');
@@ -230,8 +229,7 @@ class Rtcache_Backend {
 					}
 					if ($exists[$id]) {
 						$numNotExpired++;
-					}
-					else {
+					} else {
 						$numExpired++;
 						$expired[] = $id;
 

@@ -8,19 +8,24 @@
  */
 abstract class Rtcache_Slot {
 
+	/**
+	 * Backend object responsible for this cache slot.
+	 * @var Rtcache_Backend
+	 */
 	protected $backend = null;
+
 	/**
 	 * Tags attached to this slot.
-	 * 
 	 * @var array of tags
 	 */
-	protected $_tags=array();
+	protected $_tags = array();
+
 	/**
 	 * ID associated to this slot.
-	 * 
 	 * @var string
 	 */
 	private $_id = null;
+
 	/**
 	 * Lifetime of this slot. Default 1 hour.
 	 * @var int
@@ -39,7 +44,7 @@ abstract class Rtcache_Slot {
 	}
 
 	/**
-	 * Loads a data of this slot. If nothing is found, returns false.
+	 * Loads a data from this slot. If nothing is found, returns false.
 	 * 
 	 * @return mixed   Complex data or false if no cache entry is found.
 	 */
@@ -51,7 +56,7 @@ abstract class Rtcache_Slot {
 	}
 
 	/**
-	 * Saves a data for this slot. 
+	 * Saves a data in this slot. 
 	 * 
 	 * @param mixed $data   Data to be saved.
 	 * @return void
@@ -62,7 +67,7 @@ abstract class Rtcache_Slot {
 	}
 
 	/**
-	 * Removes a data of specified slot.
+	 * Removes a data in specified slot.
 	 * 
 	 * @return void
 	 */
@@ -81,6 +86,9 @@ abstract class Rtcache_Slot {
 
 }
 
+/**
+ * Slot exception namespace
+ */
 class Rtcache_SlotException extends Exception {
 	
 }

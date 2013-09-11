@@ -20,64 +20,78 @@ class Rtcache_Client {
 	 * @var resource
 	 */
 	protected $socket;
+
 	/**
 	 * Host of the Redis server
 	 * @var string
 	 */
 	protected $host = 'localhost';
+
 	/**
 	 * Port on which the Redis server is running
 	 * @var integer
 	 */
 	protected $port = 6379;
+
 	/**
 	 * Timeout for connecting to Redis server in ms
 	 * @var float
 	 */
 	protected $timeout = 2.5;
+
 	/**
-	 * Timeout for reading response from Redis server in us
+	 * Timeout for reading response from Redis server in sec
 	 * @var float
 	 */
-	protected $readTimeout;
+	protected $readTimeout=0;
+
 	/**
 	 * Unique identifier for persistent connections
 	 * @var string
 	 */
 	protected $persistent;
+
 	/**
 	 * @var bool
 	 */
 	protected $closeOnDestruct = TRUE;
+
 	/**
 	 * @var bool
 	 */
 	protected $connected = FALSE;
+
 	/**
 	 * @var int
 	 */
 	protected $maxConnectRetries = 0;
+
 	/**
 	 * @var int
 	 */
 	protected $connectFailures = 0;
+
 	/**
 	 * @var array
 	 */
 	protected $commandNames;
+
 	/**
 	 * @var string
 	 */
 	protected $commands;
+
 	/**
 	 * Transaction mode
 	 * @var bool
 	 */
 	protected $isMulti = FALSE;
+
 	/**
 	 * @var string
 	 */
 	protected $authPassword;
+
 	/**
 	 * Current database
 	 * @var int
@@ -107,20 +121,11 @@ class Rtcache_Client {
 
 	/**
 	 * @param int $retries
-	 * @return Credis_Client
+	 * @return int new value
 	 */
 	public function setMaxConnectRetries($retries) {
-		$this->maxConnectRetries = $retries;
-		return $this;
-	}
-
-	/**
-	 * @param bool $flag
-	 * @return Credis_Client
-	 */
-	public function setCloseOnDestruct($flag) {
-		$this->closeOnDestruct = $flag;
-		return $this;
+		$this->maxConnectRetries = (int) $retries >= 0 ? (int) $retries : 0;
+		return $this->maxConnectRetries;
 	}
 
 	/**
@@ -183,7 +188,7 @@ class Rtcache_Client {
 		if ($this->connected) {
 			stream_set_timeout($this->socket, (int) floor($timeout), ($timeout - floor($timeout)) * 1000000);
 		}
-		return $this;
+		return $this->readTimeout;
 	}
 
 	/**
@@ -213,10 +218,10 @@ class Rtcache_Client {
 	 */
 	public function __call($name, $args) {
 
-		if ($this->connected) {
+		if (!$this->connected) {
 			$this->connect();
 		}
-
+		$args = (array) $args;
 		$name = strtolower($name);
 
 		// Flatten arguments

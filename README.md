@@ -29,8 +29,8 @@ Rtcache_CacheBackend based on code and ideas:
 
 Rtcache is not tied to a specific Frameworks.
  
- - 05.09.2013 v.0.1
- - 10.09.2013 v.0.4
+ - 05.09.2013 v.0.1 start version
+ - 11.09.2013 v.0.4 added unit tests
  
 George Batanov
 gsb@gsbmail.ru
