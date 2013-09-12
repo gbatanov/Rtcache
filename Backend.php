@@ -21,7 +21,7 @@ class Rtcache_Backend {
 	const FIELD_DATA = 'rtc_d';
 	const FIELD_TAGS = 'rtc_t';
 	// lifetime limit, default 1 month
-	const MAX_LIFETIME = 2592000;
+	const MAX_LIFETIME = 2592000; //sec
 	const DEFAULT_CONNECT_TIMEOUT = 2.5;
 	const DEFAULT_CONNECT_RETRIES = 1;
 	const DEFAULT_READ_TIMEOUT = 3000000; // 3 sec
@@ -43,13 +43,16 @@ class Rtcache_Backend {
 		$read_timeout = isset($options['read_timeout']) ? (float) $options['read_timeout'] : self::DEFAULT_READ_TIMEOUT;
 		$persistent = isset($options['persistent']) ? $options['persistent'] : '';
 		$connectRetries = isset($options['connect_retries']) ? (int) $options['connect_retries'] : self::DEFAULT_CONNECT_RETRIES;
+		try {
+			$this->_redis = new Rtcache_Client($server, $port, $timeout, $persistent);
+			$this->_redis->setMaxConnectRetries($connectRetries);
+			$this->_redis->setReadTimeout($read_timeout);
 
-		$this->_redis = new Rtcache_Client($server, $port, $timeout, $persistent);
-		$this->_redis->setMaxConnectRetries($connectRetries);
-		$this->_redis->setReadTimeout($read_timeout);
-
-		if (!empty($options['password'])) {
-			$this->_redis->auth($options['password']) or self::throwException('Unable to authenticate with the redis server.');
+			if (!empty($options['password'])) {
+				$this->_redis->auth($options['password']) or self::throwException('Unable to authenticate with the redis server.');
+			}
+		} catch (CredisException $e) {
+			self::throwException($e->getMessage());
 		}
 
 		// Always select database on startup.
@@ -65,6 +68,9 @@ class Rtcache_Backend {
 		}
 	}
 
+	/**
+	 * Close backend
+	 */
 	public function close() {
 		if (isset($this->_redis)) {
 			$this->_redis->close();
@@ -157,18 +163,20 @@ class Rtcache_Backend {
 	 */
 	public function remove($id) {
 		// Get list of tags for this id
-		$tags = explode(',', $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_TAGS));
+		$tags = $this->_redis->hGet(self::PREFIX_KEY_IDS . $id, self::FIELD_TAGS);
 		// Start transaction
 		$this->_redis->multi();
 		// Remove data
 		$this->_redis->del(self::PREFIX_KEY_IDS . $id);
-		// Update the id list for each tag
-		foreach ($tags as $tag) {
-			$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $id);
+		if (!empty($tags)) {
+			$tags = (array) explode(',', $tags);
+			// Update the id list for each tag
+			foreach ($tags as $tag) {
+				$this->_redis->sRem(self::PREFIX_TAG_IDS . $tag, $id);
+			}
 		}
 		// Execute all comand and end transaction
 		$result = $this->_redis->exec();
-
 		return (bool) $result[0];
 	}
 

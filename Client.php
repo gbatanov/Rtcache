@@ -282,7 +282,7 @@ class Rtcache_Client {
 			$this->isMulti = TRUE;
 			$this->commandNames = array();
 			$this->commands = '';
-			return $this;
+//			return $this;
 		}
 
 		// standard mode

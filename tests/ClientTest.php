@@ -138,7 +138,7 @@ class ClientTest extends PHPUnit_Framework_TestCase {
 			array('sadd', array('mykey1', 'hello1'), 1),
 			array('sadd', array('mykey1', 'hello1'), 0),
 			array('sadd', array('mykey1', 'hello2'), 1),
-			array('smembers', array('mykey1'), array("hello2", "hello1")),
+			array('smembers', array('mykey1'), array("hello1", "hello2")),
 			array('sadd', array('mykey2', 'hello2'), 1),
 			array('sinter', array('mykey1', 'mykey2'), array('hello2')),
 			array('sunion', array('mykey1', 'mykey2'), array('hello1', 'hello2')),
